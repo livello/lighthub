@@ -74,7 +74,7 @@ typedef union
         float currentValueExtra;
     };
     unsigned long nextPollMillis;
-    int8_t PollDelaySeconds;
+    long PollDelaySeconds;
 } inStore;
 
 class Input

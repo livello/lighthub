@@ -1058,7 +1058,7 @@ int Item::checkModbusDimmer(int data) {
     } //if data changed
 }
 
-int Item::poll() {
+int Item::Poll() {
     switch (itemType) {
         case CH_MODBUS:
             checkModbusDimmer();

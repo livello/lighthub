@@ -64,7 +64,6 @@ ESP32
 PWM Out
 
 */
-
 #include "Arduino.h"
 #include "main.h"
 #include "options.h"
@@ -76,6 +75,12 @@ EthernetClient ethClient;
 
 #if defined(__AVR__)
 EthernetClient ethClient;
+#endif
+
+#ifdef __ESP__
+#include <ESP8266WiFi.h>
+#include <user_interface.h>
+WiFiClient ethClient;
 #endif
 
 const char outprefix[] PROGMEM = OUTTOPIC;
@@ -91,7 +96,6 @@ aJsonObject *mqttArr = NULL;
 aJsonObject *modbusArr = NULL;
 aJsonObject *owArr = NULL;
 aJsonObject *dmxArr = NULL;
-aJsonObject *dhtArr = NULL;
 
 unsigned long nextPollingCheck = 0;
 unsigned long nextInputCheck = 0;
@@ -113,6 +117,8 @@ byte mac[6];
 
 PubSubClient mqttClient(ethClient);
 
+
+bool wifiInitialized;
 
 bool IsThermostat(const aJsonObject *item);
 
@@ -217,13 +223,25 @@ int lanLoop() {
         case 0: //Ethernet.begin(mac,ip);
         {
 #ifdef __ESP__
-            WiFi.mode(WIFI_STA);
-            Serial.print(F("WIFI AP/Password:"));
-            Serial.print(QUOTE(ESP_WIFI_AP));
-            Serial.print(F("/"));
-            Serial.println(QUOTE(ESP_WIFI_PWD));
-            wifiMulti.addAP(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
-            if((wifiMulti.run() == WL_CONNECTED)) lanStatus=1;
+            if(!wifiInitialized) {
+                WiFi.mode(WIFI_STA);
+                Serial.print(F("WIFI AP/Password:"));
+                Serial.print(QUOTE(ESP_WIFI_AP));
+                Serial.print(F("/"));
+                Serial.println(QUOTE(ESP_WIFI_PWD));
+                wifi_set_macaddr(STATION_IF,mac);
+                WiFi.begin(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
+                wifiInitialized = true;
+            }
+
+            if (WiFi.status() == WL_CONNECTED) {
+                Serial.println("WiFi connected");
+                Serial.println("IP address: ");
+                Serial.println(WiFi.localIP());
+                lanStatus=1;
+            }
+
+
 #else
             IPAddress ip;
             IPAddress dns;
@@ -495,9 +513,7 @@ void cmdFunctionKill(int arg_cnt, char **args) {
 
 void applyConfig() {
   if (!root) return;
-#ifdef DHT_ENABLE
-    dhtArr = aJson.getObjectItem(root, "dht");
-#endif
+
 #ifdef _dmxin
     int itemsCount;
     dmxArr = aJson.getObjectItem(root, "dmxin");
@@ -587,8 +603,6 @@ void printConfigSummary() {
     printBool(mqttArr);
     Serial.print(F("1-wire "));
     printBool(owArr);
-    Serial.print(F("dht "));
-    printBool(dhtArr);
 }
 
 void cmdFunctionLoad(int arg_cnt, char **args) {
@@ -939,11 +953,6 @@ void setup_main() {
 #ifdef SD_CARD_INSERTED
     sd_card_w5100_setup();
 #endif
-
-#ifdef __ESP__
-    espSetup();
-#endif
-
     setupMacAddress();
     loadConfigFromEEPROM(0, NULL);
 

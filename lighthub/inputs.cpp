@@ -97,14 +97,6 @@ void Input::dht22Poll() {
     if(store->nextPollMillis>millis())
         return;
     Serial.print(" dhtpoll ");
-    if(!store->PollDelaySeconds) {
-        aJsonObject *pollDelay = aJson.getObjectItem(inputObj, "D");
-        if(pollDelay){
-            store->PollDelaySeconds = atoi(pollDelay->valuestring);
-        }
-        if(!store->PollDelaySeconds||store->PollDelaySeconds<=1)
-            store->PollDelaySeconds = DHT_POLL_DELAY_DEFAULT;
-    }
 
     DHT dht(pin, DHT22);
     float currentTemp = dht.readTemperature();
@@ -116,7 +108,8 @@ void Input::dht22Poll() {
     }
 
 
-    store->nextPollMillis = millis() + store->PollDelaySeconds*1000 ;
+    store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
+    Serial.print("NextPollMillis=");Serial.println(store->nextPollMillis);
 }
 
 void Input::contactPoll() {
