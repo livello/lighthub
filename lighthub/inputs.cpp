@@ -94,22 +94,27 @@ int Input::poll() {
 }
 
 void Input::dht22Poll() {
-    if(store->nextPollMillis>millis())
+    if (store->nextPollMillis > millis())
         return;
-    Serial.print(" dhtpoll ");
-
     DHT dht(pin, DHT22);
-    float currentTemp = dht.readTemperature();
-    float currentHumidity = dht.readHumidity();
-    if(currentTemp!=store->currentValue||currentHumidity!=store->currentValueExtra) {
-        store->currentValue = currentTemp;
-        store->currentValueExtra = currentHumidity;
-        onDht22Changed(currentTemp,currentHumidity);
+    float temp = dht.readTemperature();
+    float humidity = dht.readHumidity();
+    aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
+    if (emit && temp && humidity && temp == temp && humidity == humidity) {
+        Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" DHT22 type. T="));Serial.print(temp);
+        Serial.print(F("°C H="));Serial.print(humidity);Serial.print(F("%"));
+        char valstr[10];
+        char addrstr[100] = "";
+        strcat(addrstr, emit->valuestring);
+        strcat(addrstr, "T");
+        sprintf(valstr, "%2.1f", temp);
+        mqttClient.publish(addrstr, valstr);
+        addrstr[strlen(addrstr) - 1] = 'H';
+        sprintf(valstr, "%2.1f", humidity);
+        mqttClient.publish(addrstr, valstr);
+        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
+        Serial.print(" NextPollMillis=");Serial.println(store->nextPollMillis);
     }
-
-
-    store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
-    Serial.print("NextPollMillis=");Serial.println(store->nextPollMillis);
 }
 
 void Input::contactPoll() {
@@ -172,23 +177,4 @@ void Input::onContactChanged(int val)
             }
       }
   }
-}
-
-void Input::onDht22Changed(float temp,float humidity) {
-    Serial.print(F("IN:"));  Serial.print(pin);Serial.print(F(" DHT22 type. T="));Serial.print(store->currentValue);
-    Serial.print(F("°C H="));Serial.print(store->currentValueExtra);Serial.print(F("%"));
-    aJsonObject * item = aJson.getObjectItem(inputObj,"item");
-    aJsonObject * emit = aJson.getObjectItem(inputObj,"emit");
-    if (emit && temp && humidity) {
-        publishMqtt(temp, emit, "T");
-        publishMqtt(humidity, emit, "H");
-    }
-}
-
-void Input::publishMqtt(float value, const aJsonObject *emit, const char* addr) const {
-    char valstr[10] = "NIL";
-    char addrstr[32] = "NIL";
-    sprintf(valstr, "%2.1f", value);
-    sprintf(addrstr, "%s%s", emit->valuestring,addr);
-    mqttClient.publish(addrstr, valstr);
 }

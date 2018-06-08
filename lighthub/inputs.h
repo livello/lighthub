@@ -70,11 +70,9 @@ typedef union
         int8_t reserve;
         int8_t logicState;
         int8_t bounce;
-        float currentValue;
-        float currentValueExtra;
+        int8_t currentValue;
     };
     unsigned long nextPollMillis;
-    long PollDelaySeconds;
 } inStore;
 
 class Input
@@ -100,7 +98,4 @@ class Input
 
     void dht22Poll();
 
-    void onDht22Changed(float temp, float humidity);
-
-    void publishMqtt(float value, const aJsonObject *emit, const char *addr) const;
 };

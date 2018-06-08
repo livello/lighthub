@@ -137,4 +137,4 @@
 #define ESP_WIFI_PWD mywifipass
 #endif
 
-#define DHT_POLL_DELAY_DEFAULT 10000
+#define DHT_POLL_DELAY_DEFAULT 15000
