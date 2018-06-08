@@ -116,6 +116,8 @@ PubSubClient mqttClient(ethClient);
 
 bool IsThermostat(const aJsonObject *item);
 
+bool disabledDisconnected(const aJsonObject *thermoExtensionArray, int thermoLatestCommand);
+
 void watchdogSetup(void) {
 //Serial.begin(115200);
 //Serial.println("Watchdog armed.");
@@ -428,7 +430,6 @@ int lanLoop() {
     return lanStatus;
 
 }
-
 #ifdef _owire
 
 void Changed(int i, DeviceAddress addr, int val) {
@@ -438,12 +439,8 @@ void Changed(int i, DeviceAddress addr, int val) {
     char *owEmit = NULL;
     char *owItem = NULL;
 
-    //PrintBytes(addr,8);
-    // Serial.print("Emit: ");
     SetBytes(addr, 8, addrbuf);
     addrbuf[17] = 0;
-
-    //Serial.println(addrbuf);
 
     aJsonObject *owObj = aJson.getObjectItem(owArr, addrbuf);
     if (owObj) {
@@ -455,56 +452,14 @@ void Changed(int i, DeviceAddress addr, int val) {
             Serial.println(val);
         }
         owItem = aJson.getObjectItem(owObj, "item")->valuestring;
-    } else Serial.println(F("Not find"));
-
-
-    /* No sw support anymore
-   switch (addr[0]){
-    case 0x29: // DS2408
-      snprintf(addrstr,sizeof(addrstr),"%sS0%s",outprefix,addrbuf);
-     // Serial.println(addrstr);
-      client.publish(addrstr, (val & SW_STAT0)?"ON":"OFF");
-      snprintf(addrstr,sizeof(addrstr),"%sS1%s",outprefix,addrbuf);
-    //  Serial.println(addrstr);
-      client.publish(addrstr, (val & SW_STAT1)?"ON":"OFF");
-      snprintf(addrstr,sizeof(addrstr),"%sS2%s",outprefix,addrbuf);
-     // Serial.println(addrstr);
-      client.publish(addrstr, (val & SW_AUX0)?"OFF":"ON");
-      snprintf(addrstr,sizeof(addrstr),"%sS3%s",outprefix,addrbuf);
-     // Serial.println(addrstr);
-      client.publish(addrstr, (val & SW_AUX1)?"OFF":"ON");
-      break;
-
-    case 0x28: // Thermomerer
-
-     snprintf(addrstr,sizeof(addrstr),"%s%s",outprefix,addrbuf);
-     sprintf(valstr,"%d",val);
-     //Serial.println(val);
-     //Serial.println(valstr);
-     client.publish(addrstr, valstr);
-
-     if (owItem)
-        {
-        thermoSetCurTemp(owItem,val);
-        }
-     break;
-
-    case 0x01:
-    case 0x81:
-     snprintf(addrstr,sizeof(addrstr),"%sDS%s",outprefix,addrbuf);
-     if (val) sprintf(valstr,"%s","ON"); else sprintf(valstr,"%s","OFF");
-     client.publish(addrstr, valstr);
-   }
-    */
+    } else Serial.println(F("1w-item not found in config"));
 
     if ((val == -127) || (val == 85) || (val == 0)) { //ToDo: 1-w short circuit mapped to "0" celsium
-//        Serial.print("Temp err ");Serial.println(t);
         return;
     }
 
     strcpy_P(addrstr, outprefix);
     strncat(addrstr, addrbuf, sizeof(addrstr));
-    //snprintf(addrstr,sizeof(addrstr),"%s%s",F(outprefix),addrbuf);
     sprintf(valstr, "%d", val);
     mqttClient.publish(addrstr, valstr);
 
@@ -1077,6 +1032,10 @@ void printFirmwareVersionAndBuildOptions() {
     Serial.println(F("(+)OWIRE"));
 #endif
 
+#ifdef Wiz5500
+    Serial.println(F("(+)Wiz5500"));
+#endif
+
 #ifdef SD_CARD_INSERTED
     Serial.println(F("(+)SDCARD"));
 #endif
@@ -1212,7 +1171,7 @@ void inputLoop(void) {
         while (input) {
             if ((input->type == aJson_Object)) {
                 Input in(input);
-                in.Poll();
+                in.poll();
             }
             input = input->next;
         }
@@ -1240,10 +1199,16 @@ void pollingLoop(void) {
 }
 #endif
 
-bool isThermostat(aJsonObject *item) {
+bool isThermostatWithMinArraySize(aJsonObject *item, int minimalArraySize) {
     return (item->type == aJson_Array) && (aJson.getArrayItem(item, I_TYPE)->valueint == CH_THERMO) &&
-           (aJson.getArraySize(item) > 4);
+           (aJson.getArraySize(item) >= minimalArraySize);
 }
+
+bool thermoDisabledOrDisconnected(aJsonObject *thermoExtensionArray, int thermoStateCommand) {
+    return thermoStateCommand == CMD_OFF || thermoStateCommand == CMD_HALT ||
+           aJson.getArrayItem(thermoExtensionArray, IET_ATTEMPTS)->valueint == 0;
+}
+
 
 //TODO: refactoring
 void thermoLoop(void) {
@@ -1252,14 +1217,14 @@ void thermoLoop(void) {
     bool thermostatCheckPrinted = false;
 
     for (aJsonObject *thermoItem = items->child; thermoItem; thermoItem = thermoItem->next) {
-        if (isThermostat(thermoItem)) {
-            int thermoPin = aJson.getArrayItem(thermoItem, I_ARG)->valueint;
-            int thermoSetting = aJson.getArrayItem(thermoItem, I_VAL)->valueint;
-            int thermoLatestCommand = aJson.getArrayItem(thermoItem, I_CMD)->valueint;
+        if (isThermostatWithMinArraySize(thermoItem, 5)) {
             aJsonObject *thermoExtensionArray = aJson.getArrayItem(thermoItem, I_EXT);
-
             if (thermoExtensionArray && (aJson.getArraySize(thermoExtensionArray) > 1)) {
+                int thermoPin = aJson.getArrayItem(thermoItem, I_ARG)->valueint;
+                int thermoSetting = aJson.getArrayItem(thermoItem, I_VAL)->valueint;
+                int thermoStateCommand = aJson.getArrayItem(thermoItem, I_CMD)->valueint;
                 int curTemp = aJson.getArrayItem(thermoExtensionArray, IET_TEMP)->valueint;
+
                 if (!aJson.getArrayItem(thermoExtensionArray, IET_ATTEMPTS)->valueint) {
                     Serial.print(thermoItem->name);
                     Serial.println(F(" Expired"));
@@ -1271,30 +1236,30 @@ void thermoLoop(void) {
                 }
                 if (curTemp > THERMO_OVERHEAT_CELSIUS) mqttClient.publish("/alarm/ovrht", thermoItem->name);
 
-                thermostatCheckPrinted = true;
+
                 Serial.print(thermoItem->name);
                 Serial.print(F(" Set:"));
                 Serial.print(thermoSetting);
                 Serial.print(F(" Cur:"));
                 Serial.print(curTemp);
                 Serial.print(F(" cmd:"));
-                Serial.print(thermoLatestCommand);
+                Serial.print(thermoStateCommand);
                 pinMode(thermoPin, OUTPUT);
-                if (thermoLatestCommand == CMD_OFF || thermoLatestCommand == CMD_HALT ||
-                    aJson.getArrayItem(thermoExtensionArray, IET_ATTEMPTS)->valueint == 0) {
+                if (thermoDisabledOrDisconnected(thermoExtensionArray, thermoStateCommand)) {
                     digitalWrite(thermoPin, LOW);
                     Serial.println(F(" OFF"));
                 } else {
-                    if (curTemp + THERMO_GIST_CELSIUS < thermoSetting) {
+                    if (curTemp < thermoSetting - THERMO_GIST_CELSIUS) {
                         digitalWrite(thermoPin, HIGH);
                         Serial.println(F(" ON"));
                     } //too cold
-                    else if (thermoSetting <= curTemp) {
+                    else if (curTemp >= thermoSetting) {
                         digitalWrite(thermoPin, LOW);
                         Serial.println(F(" OFF"));
                     } //Reached settings
-                    else Serial.println(F(" --")); // Nothing to do
+                    else Serial.println(F(" -target zone-")); // Nothing to do
                 }
+                thermostatCheckPrinted = true;
             }
         }
     }
@@ -1311,7 +1276,7 @@ void thermoLoop(void) {
 short thermoSetCurTemp(char *name, short t) {
     if (items) {
         aJsonObject *thermoItem = aJson.getObjectItem(items, name);
-        if (isThermostat(thermoItem)) {
+        if (isThermostatWithMinArraySize(thermoItem, 4)) {
             aJsonObject *extArray = NULL;
 
             if (aJson.getArraySize(thermoItem) == 4) //No thermo extension yet
