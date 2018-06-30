@@ -19,10 +19,12 @@ e-mail    anklimov@gmail.com
 */
 
 #include "inputs.h"
-#include "aJSON.h"
 #include "item.h"
 #include <PubSubClient.h>
-#include <DHT.h>
+
+#ifndef DHT_DISABLE
+#include "DHT.h"
+#endif
 
 extern PubSubClient mqttClient;
 //DHT dht();
@@ -86,35 +88,59 @@ void Input::Parse()
 
 int Input::poll() {
     if (!isValid()) return -1;
-    if (inType & IN_PUSH_ON)
-        contactPoll();
-    else if (inType & IN_DHT22)
+    if (inType & IN_DHT22)
         dht22Poll();
+/* example
+    else if (inType & IN_ANALOG)
+        analogPoll(); */
+    else
+        contactPoll();
     return 0;
 }
 
 void Input::dht22Poll() {
+#ifndef DHT_DISABLE
     if (store->nextPollMillis > millis())
         return;
     DHT dht(pin, DHT22);
     float temp = dht.readTemperature();
     float humidity = dht.readHumidity();
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
+    Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" DHT22 type. T="));Serial.print(temp);
+    Serial.print(F("°C H="));Serial.print(humidity);Serial.print(F("%"));
     if (emit && temp && humidity && temp == temp && humidity == humidity) {
-        Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" DHT22 type. T="));Serial.print(temp);
-        Serial.print(F("°C H="));Serial.print(humidity);Serial.print(F("%"));
         char valstr[10];
         char addrstr[100] = "";
         strcat(addrstr, emit->valuestring);
         strcat(addrstr, "T");
-        sprintf(valstr, "%2.1f", temp);
+        printFloatValueToStr(temp, valstr);
         mqttClient.publish(addrstr, valstr);
         addrstr[strlen(addrstr) - 1] = 'H';
-        sprintf(valstr, "%2.1f", humidity);
+        printFloatValueToStr(humidity, valstr);
         mqttClient.publish(addrstr, valstr);
         store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
         Serial.print(" NextPollMillis=");Serial.println(store->nextPollMillis);
     }
+    else
+        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT/3;
+#endif
+}
+
+void Input::printFloatValueToStr(float temp, char *valstr) {
+    #if defined(__ESP__)
+    sprintf(valstr, "%2.1f", temp);
+    #endif
+    #if defined(__AVR__)
+    sprintf(valstr, "%d", (int)temp);
+    int fractional = 10.0*((float)abs(temp)-(float)abs((int)temp));
+    int val_len =strlen(valstr);
+    valstr[val_len]='.';
+    valstr[val_len+1]='0'+fractional;
+    valstr[val_len+2]='\0';
+    #endif
+    #if defined(__SAM3X8E__)
+    sprintf(valstr, "%2.1f", temp);
+    #endif
 }
 
 void Input::contactPoll() {
