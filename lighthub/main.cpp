@@ -444,6 +444,7 @@ void onInitialStateInitLAN() {
     } else
     {
         Serial.println(F("Problem with WiFi connected"));
+        nextLanCheckTime = millis() + DHCP_RETRY_INTERVAL/5;
     }
 #endif
 
