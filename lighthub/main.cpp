@@ -423,6 +423,7 @@ void onInitialStateInitLAN() {
         Serial.print(F("/"));
         Serial.println(QUOTE(ESP_WIFI_PWD));
         esp_base_mac_addr_set(mac);
+        WiFi.enableSTA(true);
         WiFi.begin(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
         int wifi_connection_wait = 10000;
         while (WiFi.status() != WL_CONNECTED && wifi_connection_wait > 0) {
@@ -436,10 +437,12 @@ void onInitialStateInitLAN() {
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP8266)
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("WiFi connected");
-        Serial.println("IP address: ");
+        Serial.print(F("WiFi connected. IP address: "));
         Serial.println(WiFi.localIP());
         lanStatus = HAVE_IP_ADDRESS;//1;
+    } else
+    {
+        Serial.println(F("Problem with WiFi connected"));
     }
 #endif
 
