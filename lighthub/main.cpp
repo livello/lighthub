@@ -418,13 +418,14 @@ void onInitialStateInitLAN() {
 
 #ifdef ARDUINO_ARCH_ESP32
     if(!wifiInitialized) {
+        WiFi.mode(WIFI_STA);
+        WiFi.disconnect();
         Serial.print(F("WIFI AP/Password:"));
         Serial.print(QUOTE(ESP_WIFI_AP));
         Serial.print(F("/"));
         Serial.println(QUOTE(ESP_WIFI_PWD));
-        esp_base_mac_addr_set(mac);
-        WiFi.enableSTA(true);
         WiFi.begin(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
+
         int wifi_connection_wait = 10000;
         while (WiFi.status() != WL_CONNECTED && wifi_connection_wait > 0) {
             delay(500);
