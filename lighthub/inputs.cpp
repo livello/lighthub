@@ -33,7 +33,11 @@ extern PubSubClient mqttClient;
 static volatile long encoder_value[6];
 #endif
 
-#if defined(__ESP__)
+#if defined(ESP8266)
+static volatile long encoder_value[6];
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
 static volatile long encoder_value[6];
 #endif
 
@@ -220,7 +224,7 @@ void Input::dht22Poll() {
 }
 
 void Input::printFloatValueToStr(float temp, char *valstr) {
-    #if defined(__ESP__)
+    #if defined(ESP8266)
     sprintf(valstr, "%2.1f", temp);
     #endif
     #if defined(__AVR__)
