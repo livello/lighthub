@@ -33,6 +33,10 @@ extern PubSubClient mqttClient;
 static volatile long encoder_value[6];
 #endif
 
+#if defined(__ESP__)
+static volatile long encoder_value[6];
+#endif
+
 #if defined(__SAM3X8E__)
 static short encoder_irq_map[54];
     static long encoder_value[54];
