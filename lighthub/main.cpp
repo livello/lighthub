@@ -1238,6 +1238,10 @@ void setup_main() {
     //TODO: checkForRemoteSketchUpdate();
 }
 
+#ifdef MMMMMM
+errro!!!
+#endif
+
 void printFirmwareVersionAndBuildOptions() {
     debugSerial<<F("\nLazyhome.ru LightHub controller ")<<F(QUOTE(PIO_SRC_REV))<<F(" C++ version:")<<F(QUOTE(__cplusplus))<<endl;
 #ifdef CONTROLLINO
