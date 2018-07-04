@@ -495,7 +495,16 @@ void onInitialStateInitLAN() {
 #endif
 }
 
+#if defined(__AVR__) || defined(__SAMS3XE8)
 void (*softRebootFunc)(void) = 0;
+#endif
+
+#if defined(ESP8266) || defined(ARDUINO_ARCH_ESP32)
+void softRebootFunc(){
+    Serial.print(F("ESP.restart();"));
+    ESP.restart();
+}
+#endif
 
 void resetHard() {
 #ifdef RESET_PIN
@@ -507,7 +516,7 @@ void resetHard() {
     delay(500);
     digitalWrite(RESET_PIN,HIGH);
     delay(500);
-#endif    
+#endif
 }
 
 #ifdef _owire
@@ -1431,4 +1440,3 @@ short thermoSetCurTemp(char *name, short t) {
     }
 
 }
-
