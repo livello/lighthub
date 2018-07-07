@@ -20,7 +20,7 @@ e-mail    anklimov@gmail.com
 
 #include "utils.h"
 
-#if defined(__SAM3X8E__)
+#if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32F1)
 #include <malloc.h>
 #endif
 
@@ -92,6 +92,22 @@ unsigned long freeRam ()
   int v; 
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+#endif
+
+#if defined(ARDUINO_ARCH_STM32F1)
+extern char _end;
+extern "C" char *sbrk(int i);
+
+unsigned long freeRam() {
+    char *ramstart = (char *) 0x20070000;
+    char *ramend = (char *) 0x20088000;
+    char *heapend = sbrk(0);
+    register char *stack_ptr asm( "sp" );
+    struct mallinfo mi;
+
+    return stack_ptr - heapend + mi.fordblks;
+}
+
 #endif
 
 #if defined(__SAM3X8E__)

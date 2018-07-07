@@ -91,6 +91,17 @@ WiFiClient ethClient;
 WiFiClient ethClient;
 #endif
 
+#ifdef ARDUINO_ARCH_STM32F1
+//#include <EthernetClient.h>
+#include "UIPEthernet.h"
+//#include "UIPUdp.h"
+#include "Dns.h"
+#include "utility/logging.h"
+#include <EEPROM.h>
+
+EthernetClient ethClient;
+#endif
+
 lan_status lanStatus = INITIAL_STATE;
 
 const char outprefix[] PROGMEM = OUTTOPIC;
@@ -168,6 +179,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
     {
         char buf[MQTT_TOPIC_LENGTH + 1];
         strncpy_P(buf, inprefix, sizeof(buf));
+
         intopic = strncmp(topic, buf, strlen(inprefix));
     }
     // in Retaining status - trying to restore previous state from retained output topic. Retained input topics are not relevant.
@@ -494,6 +506,12 @@ void onInitialStateInitLAN() {
 
 #endif
 }
+
+#ifdef ARDUINO_ARCH_STM32F1
+void softRebootFunc() {
+    nvic_sys_reset();
+}
+#endif
 
 #if defined(__AVR__) || defined(__SAMS3XE8)
 void (*softRebootFunc)(void) = 0;

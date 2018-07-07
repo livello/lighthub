@@ -136,3 +136,7 @@
 #endif
 
 #define DHT_POLL_DELAY_DEFAULT 15000
+
+#ifdef ARDUINO_ARCH_STM32F1
+#define strncpy_P strncpy
+#endif

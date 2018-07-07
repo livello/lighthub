@@ -41,7 +41,7 @@ static volatile long encoder_value[6];
 static volatile long encoder_value[6];
 #endif
 
-#if defined(__SAM3X8E__)
+#if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32F1)
 static short encoder_irq_map[54];
     static long encoder_value[54];
     static int encoders_count;
@@ -242,7 +242,8 @@ void Input::printFloatValueToStr(float temp, char *valstr) {
 
 void Input::contactPoll() {
     boolean currentInputState;
-    uint8_t inputPinMode, inputOnLevel;
+     WiringPinMode inputPinMode;
+     uint8_t inputOnLevel;
     if (inType & IN_ACTIVE_HIGH) {
         inputOnLevel = HIGH;
         inputPinMode = INPUT;
