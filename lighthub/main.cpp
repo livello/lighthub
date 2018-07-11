@@ -513,7 +513,7 @@ void softRebootFunc() {
 }
 #endif
 
-#if defined(__AVR__) || defined(__SAMS3XE8)
+#if defined(__AVR__) || defined(__SAM3X8E__)
 void (*softRebootFunc)(void) = 0;
 #endif
 
