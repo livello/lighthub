@@ -1178,10 +1178,6 @@ void printFirmwareVersionAndBuildOptions() {
     Serial.println(F("(-)DHT"));
 #endif
 
-#ifdef Wiz5500
-    Serial.println(F("(+)Wiz5500"));
-#endif
-
 #ifdef SD_CARD_INSERTED
     Serial.println(F("(+)SDCARD"));
 #endif
