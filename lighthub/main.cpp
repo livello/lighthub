@@ -1,5 +1,5 @@
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <Ethernet3.h>
 #include "main.h"
 
 // Enter a MAC address for your controller below.
