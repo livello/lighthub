@@ -140,3 +140,7 @@
 #ifdef ARDUINO_ARCH_STM32F1
 #define strncpy_P strncpy
 #endif
+
+#ifndef debugSerial
+#define debugSerial Serial1
+#endif

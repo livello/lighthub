@@ -53,7 +53,7 @@ void SetBytes(uint8_t *addr, uint8_t count, char *out) {
 
 
 byte HEX2DEC(char i) {
-    byte v;
+    byte v=0;
     if ('a' <= i && i <= 'f') { v = i - 97 + 10; }
     else if ('A' <= i && i <= 'F') { v = i - 65 + 10; }
     else if ('0' <= i && i <= '9') { v = i - 48; }
@@ -99,8 +99,8 @@ extern char _end;
 extern "C" char *sbrk(int i);
 
 unsigned long freeRam() {
-    char *ramstart = (char *) 0x20070000;
-    char *ramend = (char *) 0x20088000;
+//    char *ramstart = (char *) 0x20070000;
+//    char *ramend = (char *) 0x20088000;
     char *heapend = sbrk(0);
     register char *stack_ptr asm( "sp" );
     struct mallinfo mi;
@@ -136,3 +136,5 @@ void parseBytes(const char *str, char separator, byte *bytes, int maxBytes, int 
         str++;                                // Point to next character after separator
     }
 }
+#pragma message(VAR_NAME_VALUE(debugSerial))
+#pragma message(VAR_NAME_VALUE(SERIAL_BAUD))
