@@ -1119,10 +1119,6 @@ void setup_main() {
     //TODO: checkForRemoteSketchUpdate();
 }
 
-#ifdef MMMMMM
-errro!!!
-#endif
-
 void printFirmwareVersionAndBuildOptions() {
     Serial.print(F("\nLazyhome.ru LightHub controller "));
     Serial.println(F(QUOTE(PIO_SRC_REV)));
