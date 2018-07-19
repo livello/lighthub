@@ -357,16 +357,22 @@ void ip_ready_config_loaded_connecting_to_broker() {
     char passwordBuf[16] = "";
     char *password = passwordBuf;
 #ifndef SYSLOG_DISABLE
+    debugSerial.println("debugSerial:");
+    delay(100);
     char *syslogServer = aJson.getArrayItem(udpSyslogArr, 0)->valuestring;
     int syslogPort = aJson.getArrayItem(udpSyslogArr, 1)->valueint;
     char *syslogDeviceHostname = aJson.getArrayItem(udpSyslogArr, 2)->valuestring;
     char *syslogAppname = aJson.getArrayItem(udpSyslogArr, 3)->valuestring;
-
-    udpSyslog.server(syslogServer, syslogPort);
-    udpSyslog.deviceHostname(syslogDeviceHostname);
-    udpSyslog.appName(syslogAppname);
-    udpSyslog.defaultPriority(LOG_KERN);
-    udpSyslog.log(LOG_INFO, "UDP Syslog initialized!");
+    debugSerial.println("debugSerial:");
+    debugSerial.println(syslogServer);
+    debugSerial.println(syslogPort);
+    debugSerial.println(syslogDeviceHostname);
+    debugSerial.println(syslogAppname);
+//    udpSyslog.server("192.168.10.110", 65514);
+//    udpSyslog.deviceHostname(syslogDeviceHostname);
+//    udpSyslog.appName(syslogAppname);
+//    udpSyslog.defaultPriority(LOG_KERN);
+//    udpSyslog.log(LOG_INFO, "UDP Syslog initialized!");
 #endif
 
     if (!mqttClient.connected() && mqttArr && ((n = aJson.getArraySize(mqttArr)) > 1)) {
@@ -608,7 +614,7 @@ void cmdFunctionHelp(int arg_cnt, char **args)
 {
     printFirmwareVersionAndBuildOptions();
     #ifndef SYSLOG_DISABLE
-    udpSyslog.logf(LOG_INFO, "free RAM: %d",freeRam());
+//    udpSyslog.logf(LOG_INFO, "free RAM: %d",freeRam());
     #endif
     debugSerial.print(F(" free RAM: "));debugSerial.print(freeRam());
     debugSerial.println(F(" Use the commands: 'help' - this text\n"
@@ -1302,11 +1308,8 @@ void loop_main() {
 #endif
 
 #ifndef SYSLOG_DISABLE
-    if(nextSyslogPingTime<millis()) {
-        debugSerial.print(F("Ping syslog"));debugSerial.println(nextSyslogPingTime);
+//        debugSerial.print(F("#"));
 //        udpSyslog.log(LOG_INFO, "Ping syslog:");
-        nextSyslogPingTime = millis()+1000;
-    }
 #endif
 
 }
