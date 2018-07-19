@@ -368,11 +368,11 @@ void ip_ready_config_loaded_connecting_to_broker() {
     debugSerial.println(syslogPort);
     debugSerial.println(syslogDeviceHostname);
     debugSerial.println(syslogAppname);
-//    udpSyslog.server("192.168.10.110", 65514);
-//    udpSyslog.deviceHostname(syslogDeviceHostname);
-//    udpSyslog.appName(syslogAppname);
-//    udpSyslog.defaultPriority(LOG_KERN);
-//    udpSyslog.log(LOG_INFO, "UDP Syslog initialized!");
+    udpSyslog.server(syslogServer, syslogPort);
+    udpSyslog.deviceHostname(syslogDeviceHostname);
+    udpSyslog.appName(syslogAppname);
+    udpSyslog.defaultPriority(LOG_KERN);
+    udpSyslog.log(LOG_INFO, "UDP Syslog initialized!");
 #endif
 
     if (!mqttClient.connected() && mqttArr && ((n = aJson.getArraySize(mqttArr)) > 1)) {
