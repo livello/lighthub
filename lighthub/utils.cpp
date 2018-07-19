@@ -99,11 +99,9 @@ extern char _end;
 extern "C" char *sbrk(int i);
 
 unsigned long freeRam() {
-//    char *ramstart = (char *) 0x20070000;
-//    char *ramend = (char *) 0x20088000;
     char *heapend = sbrk(0);
     register char *stack_ptr asm( "sp" );
-    struct mallinfo mi;
+    struct mallinfo mi = mallinfo();
 
     return stack_ptr - heapend + mi.fordblks;
 }

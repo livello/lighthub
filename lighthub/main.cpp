@@ -97,6 +97,7 @@ WiFiClient ethClient;
 //#include "UIPUdp.h"
 #include <SPI.h>
 #include <Ethernet_STM.h>
+#include "HttpClient.h"
 #include "Dns.h"
 //#include "utility/logging.h"
 #include <EEPROM.h>
@@ -586,7 +587,7 @@ void cmdFunctionHelp(int arg_cnt, char **args)
 //(char* tokens)
 {
     printFirmwareVersionAndBuildOptions();
-    Serial.print(F(" MEM="));Serial.print(freeRam());
+    debugSerial.print(F(" free RAM: "));debugSerial.print(freeRam());
     debugSerial.println(F(" Use the commands: 'help' - this text\n"
                              "'mac de:ad:be:ef:fe:00' set and store MAC-address in EEPROM\n"
                              "'ip [ip[,dns[,gw[,subnet]]]]' - set static IP\n"
@@ -974,7 +975,7 @@ lan_status getConfig(int arg_cnt, char **args)
         return READ_RE_CONFIG;//-11;
     }
 #endif
-#if defined(__SAM3X8E__)
+#if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32F1)
     String response;
     EthernetClient configEthClient;
     HttpClient htclient = HttpClient(configEthClient, configServer, 80);
