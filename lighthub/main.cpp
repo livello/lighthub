@@ -110,6 +110,7 @@ EthernetClient ethClient;
 #include <Syslog.h>
 EthernetUDP udpSyslogClient;
 Syslog udpSyslog(udpSyslogClient, SYSLOG_PROTO_IETF);
+unsigned long nextSyslogPingTime;
 #endif
 
 lan_status lanStatus = INITIAL_STATE;
@@ -1299,6 +1300,15 @@ void loop_main() {
 #if defined (_espdmx)
     dmxout.update();
 #endif
+
+#ifndef SYSLOG_DISABLE
+    if(nextSyslogPingTime<millis()) {
+        debugSerial.print(F("Ping syslog"));debugSerial.println(nextSyslogPingTime);
+//        udpSyslog.log(LOG_INFO, "Ping syslog:");
+        nextSyslogPingTime = millis()+1000;
+    }
+#endif
+
 }
 
 void owIdle(void) {
