@@ -96,7 +96,7 @@ WiFiClient ethClient;
 //#include "UIPEthernet.h"
 //#include "UIPUdp.h"
 #include <SPI.h>
-#include <Ethernet3.h>
+#include <Ethernet_STM.h>
 #include "Dns.h"
 //#include "utility/logging.h"
 #include <EEPROM.h>
@@ -586,7 +586,8 @@ void cmdFunctionHelp(int arg_cnt, char **args)
 //(char* tokens)
 {
     printFirmwareVersionAndBuildOptions();
-    debugSerial.println(F("Use the commands: 'help' - this text\n"
+    Serial.print(F(" MEM="));Serial.print(freeRam());
+    debugSerial.println(F(" Use the commands: 'help' - this text\n"
                              "'mac de:ad:be:ef:fe:00' set and store MAC-address in EEPROM\n"
                              "'ip [ip[,dns[,gw[,subnet]]]]' - set static IP\n"
                              "'save' - save config in NVRAM\n"

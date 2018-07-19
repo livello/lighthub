@@ -144,3 +144,7 @@
 #ifndef debugSerial
 #define debugSerial Serial1
 #endif
+
+#ifndef Wiz5500
+#define W5100_ETHERNET_SHIELD
+#endif
