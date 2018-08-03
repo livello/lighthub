@@ -245,7 +245,7 @@ void Input::contactPoll() {
 #if defined(ARDUINO_ARCH_STM32F1)
      WiringPinMode inputPinMode;
 #endif
-#if defined(__SAM3X8E__)||defined(__AVR__)||defined(ESP8266)
+#if defined(__SAM3X8E__)||defined(__AVR__)||defined(ESP8266)||defined(ARDUINO_ARCH_ESP32)
      uint32_t inputPinMode;
 #endif
 

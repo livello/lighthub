@@ -88,6 +88,7 @@ WiFiClient ethClient;
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <EEPROM.h>
+#include "Ethernet3.h"
 WiFiClient ethClient;
 #endif
 

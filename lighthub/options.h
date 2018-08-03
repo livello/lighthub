@@ -142,7 +142,7 @@
 #endif
 
 #ifndef debugSerial
-#define debugSerial Serial1
+#define debugSerial Serial
 #endif
 
 #ifndef Wiz5500
