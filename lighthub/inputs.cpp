@@ -57,13 +57,13 @@ Input::Input(char * name) //Constructor
 }
 
 
-Input::Input(int pin) //Constructor
+Input::Input(int pin)
 {
  // TODO
 }
 
 
- Input::Input(aJsonObject * obj) //Constructor
+ Input::Input(aJsonObject * obj)
 {
   inputObj= obj;
   Parse();
@@ -86,9 +86,9 @@ void Input::Parse()
         aJsonObject *s;
 
         s = aJson.getObjectItem(inputObj, "T");
-        if (s) inType = s->valueint;
+        if (s) inType = static_cast<uint8_t>(s->valueint);
 
-        pin = atoi(inputObj->name);
+        pin = static_cast<uint8_t>(atoi(inputObj->name));
 
         s = aJson.getObjectItem(inputObj, "S");
         if (!s) {
@@ -108,11 +108,11 @@ int Input::poll() {
     if (!isValid()) return -1;
     if (inType & IN_DHT22)
         dht22Poll();
-else if(inType & IN_ENCODER)
-    encoderPoll();
-    /* example
-    else if (inType & IN_ANALOG)
-        analogPoll(); */
+    else if (inType & IN_ENCODER)
+        encoderPoll();
+        /* example
+        else if (inType & IN_ANALOG)
+            analogPoll(); */
     else
         contactPoll();
     return 0;
@@ -200,11 +200,17 @@ void Input::dht22Poll() {
     if (store->nextPollMillis > millis())
         return;
     DHT dht(pin, DHT22);
+    dht.begin();
     float temp = dht.readTemperature();
     float humidity = dht.readHumidity();
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
-    Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" DHT22 type. T="));Serial.print(temp);
-    Serial.print(F("°C H="));Serial.print(humidity);Serial.print(F("%"));
+    Serial.print(F("IN:"));
+    Serial.print(pin);
+    Serial.print(F(" DHT22 type. T="));
+    Serial.print(temp);
+    Serial.print(F("°C H="));
+    Serial.print(humidity);
+    Serial.print(F("%"));
     if (emit && temp && humidity && temp == temp && humidity == humidity) {
         char valstr[10];
         char addrstr[100] = "";
@@ -216,16 +222,16 @@ void Input::dht22Poll() {
         printFloatValueToStr(humidity, valstr);
         mqttClient.publish(addrstr, valstr);
         store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
-        Serial.print(" NextPollMillis=");Serial.println(store->nextPollMillis);
-    }
-    else
-        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT/3;
+        Serial.print(" NextPollMillis=");
+        Serial.println(store->nextPollMillis);
+    } else
+        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT / 3;
 #endif
 }
 
-void Input::printFloatValueToStr(float temp, char *valstr) {
-    #if defined(ESP8266)
-    sprintf(valstr, "%2.1f", temp);
+void Input::printFloatValueToStr(float value, char *valstr) {
+    #if defined(ESP8266) || defined(ARDUINO_ARCH_ESP32)
+    sprintf(valstr, "%2.1f", value);
     #endif
     #if defined(__AVR__)
     sprintf(valstr, "%d", (int)temp);

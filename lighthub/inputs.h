@@ -111,7 +111,7 @@ protected:
 
     void dht22Poll();
 
-    void printFloatValueToStr(float temp, char *valstr);
+    void printFloatValueToStr(float value, char *valstr);
 
     void encoderPoll();
 
