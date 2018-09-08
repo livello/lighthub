@@ -318,8 +318,9 @@ void Input::uptimePoll() {
         return;
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
     if (emit) {
-        char valstr[10];
-        sprintf(valstr,"%lu",millis());
+        char valstr[11];
+//        printUlongValueToStr(valstr,millis());
+        printUlongValueToStr(valstr,millis());
         mqttClient.publish(emit->valuestring, valstr);
     }
     setNextPollTime(millis() +UPTIME_POLL_DELAY_DEFAULT);
@@ -390,5 +391,20 @@ void Input::onEncoderChanged4() {
 }
 void Input::onEncoderChanged5() {
     onEncoderChanged(5);
+}
+
+void Input::printUlongValueToStr(char *valstr, unsigned long value) {
+    char buf[11];
+    int i=0;
+    for(;value>0;i++){
+        unsigned long mod = value - ((unsigned long)(value/10))*10;
+        buf[i]=mod+48;
+        value = (unsigned long)(value/10);
+    }
+
+    for(int n=0;n<=i;n++){
+        valstr[n]=buf[i-n-1];
+    }
+    valstr[i]='\0';
 }
 

@@ -124,4 +124,6 @@ protected:
 
 
     void uptimePoll();
+
+    void printUlongValueToStr(char *valstr, unsigned long value);
 };
