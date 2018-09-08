@@ -36,21 +36,21 @@ static volatile unsigned long nextPollMillisValue[5];
 static volatile int nextPollMillisPin[5] = {0,0,0,0,0};
 
 #if defined(__AVR__)
-static volatile long encoder_value[6];
+static volatile long counter_value[6];
 #endif
 
 #if defined(ESP8266)
-static volatile long encoder_value[6];
+static volatile long counter_value[6];
 #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
-static volatile long encoder_value[6];
+static volatile long counter_value[6];
 #endif
 
 #if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32F1)
-static short encoder_irq_map[54];
-    static long encoder_value[54];
-    static int encoders_count;
+static short counter_irq_map[54];
+    static long counter_value[54];
+    static int counters_count;
 #endif
 Input::Input(char * name) //Constructor
 {
@@ -114,7 +114,7 @@ int Input::poll() {
     if (inType & IN_DHT22)
         dht22Poll();
     else if (inType & IN_COUNTER)
-        encoderPoll();
+        counterPoll();
     else if (inType & IN_UPTIME)
         uptimePoll();
     else
@@ -122,7 +122,7 @@ int Input::poll() {
     return 0;
 }
 
-void Input::encoderPoll() {
+void Input::counterPoll() {
     if(nextPollTime()>millis())
         return;
     if (store->logicState == 0) {
@@ -135,28 +135,28 @@ void Input::encoderPoll() {
         } else {
             Serial.print(F("IRQ:"));
             Serial.print(pin);
-            Serial.print(F(" Encoder type. INCORRECT Interrupt number!!!"));
+            Serial.print(F(" Counter type. INCORRECT Interrupt number!!!"));
             return;
         }
 #endif
 
 #if defined(__SAM3X8E__)
-        attachInterruptPinIrq(pin,encoders_count);
-        encoder_irq_map[encoders_count]=pin;
-        encoders_count++;
+        attachInterruptPinIrq(pin,counters_count);
+        counter_irq_map[counters_count]=pin;
+        counters_count++;
 #endif
         store->logicState = 1;
         return;
     }
-    long encoderValue = encoder_value[pin];
-    Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" Encoder type. val="));Serial.print(encoderValue);
+    long counterValue = counter_value[pin];
+    Serial.print(F("IN:"));Serial.print(pin);Serial.print(F(" Counter type. val="));Serial.print(counterValue);
 
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
     if (emit) {
         char valstr[10];
         char addrstr[100] = "";
         strcat(addrstr, emit->valuestring);
-        sprintf(valstr, "%d", encoderValue);
+        sprintf(valstr, "%d", counterValue);
         mqttClient.publish(addrstr, valstr);
         setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT);
         Serial.print(F(" NextPollMillis="));Serial.println(nextPollTime());
@@ -176,22 +176,22 @@ void Input::attachInterruptPinIrq(int realPin, int irq) {
 #endif
     switch(irq){
             case 0:
-                attachInterrupt(real_irq, onEncoderChanged0, RISING);
+                attachInterrupt(real_irq, onCounterChanged0, RISING);
                 break;
             case 1:
-                attachInterrupt(real_irq, onEncoderChanged1, RISING);
+                attachInterrupt(real_irq, onCounterChanged1, RISING);
                 break;
             case 2:
-                attachInterrupt(real_irq, onEncoderChanged2, RISING);
+                attachInterrupt(real_irq, onCounterChanged2, RISING);
                 break;
             case 3:
-                attachInterrupt(real_irq, onEncoderChanged3, RISING);
+                attachInterrupt(real_irq, onCounterChanged3, RISING);
                 break;
             case 4:
-                attachInterrupt(real_irq, onEncoderChanged4, RISING);
+                attachInterrupt(real_irq, onCounterChanged4, RISING);
                 break;
             case 5:
-                attachInterrupt(real_irq, onEncoderChanged5, RISING);
+                attachInterrupt(real_irq, onCounterChanged5, RISING);
                 break;
         default:
             Serial.print(F("Incorrect irq:"));Serial.println(irq);
@@ -270,15 +270,15 @@ void Input::printFloatValueToStr(float value, char *valstr) {
     sprintf(valstr, "%2.1f", value);
     #endif
     #if defined(__AVR__)
-    sprintf(valstr, "%d", (int)temp);
-    int fractional = 10.0*((float)abs(temp)-(float)abs((int)temp));
+    sprintf(valstr, "%d", (int)value);
+    int fractional = 10.0*((float)abs(value)-(float)abs((int)value));
     int val_len =strlen(valstr);
     valstr[val_len]='.';
     valstr[val_len+1]='0'+fractional;
     valstr[val_len+2]='\0';
     #endif
     #if defined(__SAM3X8E__)
-    sprintf(valstr, "%2.1f", temp);
+    sprintf(valstr, "%2.1f",value);
     #endif
 }
 
@@ -364,33 +364,33 @@ void Input::onContactChanged(int val)
   }
 }
 
-void Input::onEncoderChanged(int i) {
+void Input::onCounterChanged(int i) {
 #if defined(__SAM3X8E__)
-    encoder_value[encoder_irq_map[i]]++;
+    counter_value[counter_irq_map[i]]++;
 #endif
 
 #if defined(__AVR__)
-    encoder_value[i]++;
+    counter_value[i]++;
 #endif
 }
 
-void Input::onEncoderChanged0() {
-    onEncoderChanged(0);
+void Input::onCounterChanged0() {
+    onCounterChanged(0);
 }
-void Input::onEncoderChanged1() {
-    onEncoderChanged(1);
+void Input::onCounterChanged1() {
+    onCounterChanged(1);
 }
-void Input::onEncoderChanged2() {
-    onEncoderChanged(2);
+void Input::onCounterChanged2() {
+    onCounterChanged(2);
 }
-void Input::onEncoderChanged3() {
-    onEncoderChanged(3);
+void Input::onCounterChanged3() {
+    onCounterChanged(3);
 }
-void Input::onEncoderChanged4() {
-    onEncoderChanged(4);
+void Input::onCounterChanged4() {
+    onCounterChanged(4);
 }
-void Input::onEncoderChanged5() {
-    onEncoderChanged(5);
+void Input::onCounterChanged5() {
+    onCounterChanged(5);
 }
 
 void Input::printUlongValueToStr(char *valstr, unsigned long value) {

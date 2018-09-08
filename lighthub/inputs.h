@@ -19,7 +19,6 @@ e-mail    anklimov@gmail.com
 */
 
 #include <aJSON.h>
-#include <map>
 
 #define IN_ACTIVE_HIGH   2      // High level = PUSHED/ CLOSED/ ON othervise :Low Level
 #define IN_ANALOG        64     // Analog input
@@ -96,13 +95,13 @@ public:
 
     int poll();
 
-    static void inline onEncoderChanged(int i);
-    static void onEncoderChanged0();
-    static void onEncoderChanged1();
-    static void onEncoderChanged2();
-    static void onEncoderChanged3();
-    static void onEncoderChanged4();
-    static void onEncoderChanged5();
+    static void inline onCounterChanged(int i);
+    static void onCounterChanged0();
+    static void onCounterChanged1();
+    static void onCounterChanged2();
+    static void onCounterChanged3();
+    static void onCounterChanged4();
+    static void onCounterChanged5();
 
 
 
@@ -115,7 +114,7 @@ protected:
 
     void printFloatValueToStr(float value, char *valstr);
 
-    void encoderPoll();
+    void counterPoll();
 
     void attachInterruptPinIrq(int realPin, int irq);
 
