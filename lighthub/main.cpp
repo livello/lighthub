@@ -1162,6 +1162,8 @@ void setup_main() {
 void printFirmwareVersionAndBuildOptions() {
     debugSerial.print(F("\nLazyhome.ru LightHub controller "));
     debugSerial.println(F(QUOTE(PIO_SRC_REV)));
+    debugSerial.print(F("C++ version:"));
+    debugSerial.println(F(QUOTE(__cplusplus)));
 #ifdef CONTROLLINO
     debugSerial.println(F("(+)CONTROLLINO"));
 #endif

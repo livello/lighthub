@@ -19,6 +19,7 @@ e-mail    anklimov@gmail.com
 */
 
 #include <aJSON.h>
+#include <map>
 
 #define IN_ACTIVE_HIGH   2      // High level = PUSHED/ CLOSED/ ON othervise :Low Level
 #define IN_ANALOG        64     // Analog input
@@ -27,7 +28,8 @@ e-mail    anklimov@gmail.com
 #define IN_PUSH_ON       0      // PUSH - ON, Release - OFF (ovverrided by pcmd/rcmd) - DEFAULT
 #define IN_PUSH_TOGGLE   1      // Every physicall push toggle logical switch  on/off
 #define IN_DHT22         4
-#define IN_ENCODER       8
+#define IN_COUNTER       8
+#define IN_UPTIME       16
 
 #define SAME_STATE_ATTEMPTS 3
 
@@ -72,7 +74,7 @@ typedef union {
         int8_t bounce;
         int8_t currentValue;
     };
-    unsigned long nextPollMillis;
+
 } inStore;
 
 class Input {
@@ -117,4 +119,9 @@ protected:
 
     void attachInterruptPinIrq(int realPin, int irq);
 
+    unsigned long nextPollTime() const;
+    void setNextPollTime(unsigned long pollTime);
+
+
+    void uptimePoll();
 };

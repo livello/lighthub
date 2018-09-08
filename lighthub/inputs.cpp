@@ -23,11 +23,17 @@ e-mail    anklimov@gmail.com
 #include <PubSubClient.h>
 
 #ifndef DHT_DISABLE
+#if defined(ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#include <DHTesp.h>
+#else
 #include "DHT.h"
+#endif
 #endif
 
 extern PubSubClient mqttClient;
-//DHT dht();
+
+static volatile unsigned long nextPollMillisValue[5];
+static volatile int nextPollMillisPin[5] = {0,0,0,0,0};
 
 #if defined(__AVR__)
 static volatile long encoder_value[6];
@@ -46,7 +52,6 @@ static short encoder_irq_map[54];
     static long encoder_value[54];
     static int encoders_count;
 #endif
-
 Input::Input(char * name) //Constructor
 {
   if (name)
@@ -108,18 +113,17 @@ int Input::poll() {
     if (!isValid()) return -1;
     if (inType & IN_DHT22)
         dht22Poll();
-    else if (inType & IN_ENCODER)
+    else if (inType & IN_COUNTER)
         encoderPoll();
-        /* example
-        else if (inType & IN_ANALOG)
-            analogPoll(); */
+    else if (inType & IN_UPTIME)
+        uptimePoll();
     else
         contactPoll();
     return 0;
 }
 
 void Input::encoderPoll() {
-    if (store->nextPollMillis > millis())
+    if(nextPollTime()>millis())
         return;
     if (store->logicState == 0) {
 #if defined(__AVR__)
@@ -154,8 +158,8 @@ void Input::encoderPoll() {
         strcat(addrstr, emit->valuestring);
         sprintf(valstr, "%d", encoderValue);
         mqttClient.publish(addrstr, valstr);
-        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
-        Serial.print(F(" NextPollMillis="));Serial.println(store->nextPollMillis);
+        setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT);
+        Serial.print(F(" NextPollMillis="));Serial.println(nextPollTime());
     }
     else
         Serial.print(F(" No emit data!"));
@@ -197,12 +201,19 @@ void Input::attachInterruptPinIrq(int realPin, int irq) {
 
 void Input::dht22Poll() {
 #ifndef DHT_DISABLE
-    if (store->nextPollMillis > millis())
+    if(nextPollTime()>millis())
         return;
+#if defined(ESP8266) || defined(ARDUINO_ARCH_ESP32)
+    DHTesp dhtSensor;
+    dhtSensor.setup(pin, DHTesp::DHT22);
+    TempAndHumidity dhtSensorData = dhtSensor.getTempAndHumidity();
+    float temp = dhtSensorData.temperature;
+    float humidity = dhtSensorData.humidity;
+#else
     DHT dht(pin, DHT22);
-    dht.begin();
     float temp = dht.readTemperature();
     float humidity = dht.readHumidity();
+#endif
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
     Serial.print(F("IN:"));
     Serial.print(pin);
@@ -221,12 +232,37 @@ void Input::dht22Poll() {
         addrstr[strlen(addrstr) - 1] = 'H';
         printFloatValueToStr(humidity, valstr);
         mqttClient.publish(addrstr, valstr);
-        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT;
+        setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT);
         Serial.print(" NextPollMillis=");
-        Serial.println(store->nextPollMillis);
+        Serial.println(nextPollTime());
     } else
-        store->nextPollMillis = millis() + DHT_POLL_DELAY_DEFAULT / 3;
+        setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT / 3);
 #endif
+}
+
+unsigned long Input::nextPollTime() const {
+    for(int i=0;i<5;i++){
+        if(nextPollMillisPin[i]==pin)
+            return nextPollMillisValue[i];
+        else if(nextPollMillisPin[i]==0) {
+            nextPollMillisPin[i]=pin;
+            return nextPollMillisValue[i] = 0;
+        }
+    }
+    return 0;
+}
+
+void Input::setNextPollTime(unsigned long pollTime) {
+    for (int i = 0; i < 5; i++) {
+        if (nextPollMillisPin[i] == pin) {
+            nextPollMillisValue[i] = pollTime;
+            return;
+        } else if (nextPollMillisPin[i] == 0) {
+            nextPollMillisPin[i] == pin;
+            nextPollMillisValue[i] = pollTime;
+            return;
+        }
+    }
 }
 
 void Input::printFloatValueToStr(float value, char *valstr) {
@@ -275,6 +311,18 @@ void Input::contactPoll() {
         }
     } else // no change
         store->bounce = SAME_STATE_ATTEMPTS;
+}
+
+void Input::uptimePoll() {
+    if(nextPollTime()>millis())
+        return;
+    aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
+    if (emit) {
+        char valstr[10];
+        sprintf(valstr,"%lu",millis());
+        mqttClient.publish(emit->valuestring, valstr);
+    }
+    setNextPollTime(millis() +UPTIME_POLL_DELAY_DEFAULT);
 }
 
 void Input::onContactChanged(int val)
