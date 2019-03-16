@@ -18,7 +18,7 @@
 #define FM_OVERHEAT_CELSIUS 40.
 
 #define MIN_VOLUME 10
-#define INIT_VOLUME 30
+#define INIT_VOLUME 50
 
 #define OFFSET_MAC 0
 #define OFFSET_IP OFFSET_MAC+6
@@ -65,6 +65,10 @@
 #define CONFIG_SERVER QUOTE(MY_CONFIG_SERVER)
 #endif
 
+#ifndef HOMETOPIC
+#define HOMETOPIC  "myhome"
+#endif
+/*
 #ifndef OUTTOPIC
 #define OUTTOPIC "/myhome/s_out/"
 #endif
@@ -76,9 +80,25 @@
 #ifndef INTOPIC
 #define INTOPIC  "/myhome/in/"
 #endif
+*/
+
+//Default output topic
+#ifndef OUTTOPIC
+#define OUTTOPIC "s_out"
+#endif
+
+//Topic to receive CLI commands
+#ifndef CMDTOPIC
+#define CMDTOPIC "$command"
+#endif
+
+//Default broadcast topic
+#ifndef INTOPIC
+#define INTOPIC  "in"
+#endif
 
 #define MQTT_SUBJECT_LENGTH 20
-#define MQTT_TOPIC_LENGTH 20
+#define MQTT_TOPIC_LENGTH 64
 
 #ifndef DMX_DISABLE
 #define _dmxin
@@ -129,6 +149,10 @@
 #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
+#undef _dmxin
+#undef _modbus
+#undef _dmxout
+#undef modbusSerial
 #endif
 
 #ifndef _dmxout

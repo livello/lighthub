@@ -88,7 +88,7 @@ int owSetup(owChangedType owCh) {
     //// todo - move memory allocation to here
     if (ds2482_OneWire) return true;    // Already initialized
 #ifdef DS2482_100_I2C_TO_1W_BRIDGE
-    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init");
+    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init\n");
     ds2482_OneWire = new OneWire;
 #else
     debugSerial.print(F("One wire setup on PIN:"));

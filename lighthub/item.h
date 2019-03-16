@@ -19,6 +19,17 @@ e-mail    anklimov@gmail.com
 */
 #include "options.h"
 
+#define S_SET 1
+#define S_TEMP 2
+#define S_MODE 3
+#define S_SETPOINT 4
+#define S_POWER 5
+#define S_VOL 6
+#define S_HEAT 7
+#define S_CSV 8
+#define S_RGB 9
+#define S_RPM 10
+
 #define CH_DIMMER 0   //DMX 1 ch
 #define CH_RGBW   1   //DMX 4 ch
 #define CH_RGB    2   //DMX 3 ch
@@ -69,6 +80,7 @@ e-mail    anklimov@gmail.com
 #include "aJSON.h"
 
 extern aJsonObject *items;
+extern short thermoSetCurTemp(char *name, float t);
 
 int txt2cmd (char * payload);
 
@@ -106,8 +118,8 @@ class Item
   Item(char * name);
   Item(aJsonObject * obj);
   boolean isValid ();
-  virtual int Ctrl(short cmd, short n=0, int * Parameters=NULL, boolean send=true);
-  virtual int Ctrl(char * payload, boolean send=true);
+  virtual int Ctrl(short cmd, short n=0, int * Parameters=NULL, boolean send=true, int subItem=0);
+  virtual int Ctrl(char * payload, boolean send=true, char * subItem=NULL);
 
   int getArg(short n=0);
   boolean getEnableCMD(int delta);
