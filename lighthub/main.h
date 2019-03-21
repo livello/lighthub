@@ -27,14 +27,14 @@
 
 #if defined ARDUINO_ARCH_ESP32
 //#include <FS.h>                   //this needs to be first, or it all crashes and burns...
-//#include <EEPROM.h>
-#include <NRFFlashStorage.h>
+#include <EEPROM.h>
+//#include <NRFFlashStorage.h>
 #include <HttpClient.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
-#include <WiFiManager.h>
+//#include <WiFiManager.h>
 #include <DNSServer.h>
 
 #define Ethernet WiFi
