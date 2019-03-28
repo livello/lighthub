@@ -1540,6 +1540,7 @@ void loop_main() {
 //        udpSyslog.log(LOG_INFO, "Ping syslog:");
 #endif
     debugSerial<<"can deep sleep?\n";
+    delay(1000);
 }
 
 void owIdle(void) {
