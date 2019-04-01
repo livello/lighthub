@@ -452,26 +452,21 @@ void Input::analogPoll() {
 
 #if defined(__SAM3X8E__)||defined(ARDUINO_ARCH_AVR)||defined(ARDUINO_ARCH_ESP8266)||defined(ARDUINO_ARCH_ESP32)
 #endif */
-    uint32_t inputPinMode;
-    if (inType & IN_ACTIVE_HIGH) {
-        inputPinMode = INPUT;
-    } else {
-        inputPinMode = INPUT_PULLUP;
-    }
-    pinMode(pin, inputPinMode);
+    (inType & IN_ACTIVE_HIGH)?pinMode(pin, INPUT):pinMode(pin, INPUT_PULLUP);
+
     mappedInputVal = analogRead(pin);
     // Mapping
     if (inputMap && inputMap->type == aJson_Array)
      {
-     int max;
+     int fromMax;
      if (aJson.getArraySize(inputMap)>=4)
         mappedInputVal  = map (mappedInputVal,
               aJson.getArrayItem(inputMap, 0)->valueint,
               aJson.getArrayItem(inputMap, 1)->valueint,
               aJson.getArrayItem(inputMap, 2)->valueint,
-              max=aJson.getArrayItem(inputMap, 3)->valueint);
+              fromMax=aJson.getArrayItem(inputMap, 3)->valueint);
       if (aJson.getArraySize(inputMap)==5) Noize = aJson.getArrayItem(inputMap, 4)->valueint;
-      if (mappedInputVal>max) mappedInputVal=max;
+      if (mappedInputVal>fromMax) mappedInputVal=fromMax;
       if (aJson.getArraySize(inputMap)==2)
         {
           simple = 1;
