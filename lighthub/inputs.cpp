@@ -439,58 +439,48 @@ void Input::contactPoll() {
 
 
 void Input::analogPoll() {
-    int16_t  mappedInputVal;
+    int16_t  mappedInputValue;
     aJsonObject *inputMap = aJson.getObjectItem(inputObj, "map");
-    short Noize = ANALOG_NOIZE;
+    short analogNoise = ANALOG_NOIZE;
     short simple = 0;
 
-/*
-#if defined(ARDUINO_ARCH_STM32)
-     WiringPinMode inputPinMode;
-#endif
-
-
-#if defined(__SAM3X8E__)||defined(ARDUINO_ARCH_AVR)||defined(ARDUINO_ARCH_ESP8266)||defined(ARDUINO_ARCH_ESP32)
-#endif */
     (inType & IN_ACTIVE_HIGH)?pinMode(pin, INPUT):pinMode(pin, INPUT_PULLUP);
-
-    mappedInputVal = analogRead(pin);
-    // Mapping
-    if (inputMap && inputMap->type == aJson_Array)
-     {
-     int fromMax;
-     if (aJson.getArraySize(inputMap)>=4)
-        mappedInputVal  = map (mappedInputVal,
-              aJson.getArrayItem(inputMap, 0)->valueint,
-              aJson.getArrayItem(inputMap, 1)->valueint,
-              aJson.getArrayItem(inputMap, 2)->valueint,
-              fromMax=aJson.getArrayItem(inputMap, 3)->valueint);
-      if (aJson.getArraySize(inputMap)==5) Noize = aJson.getArrayItem(inputMap, 4)->valueint;
-      if (mappedInputVal>fromMax) mappedInputVal=fromMax;
-      if (aJson.getArraySize(inputMap)==2)
-        {
-          simple = 1;
-          if (mappedInputVal < aJson.getArrayItem(inputMap, 0)->valueint) mappedInputVal = 0;
-            else if (mappedInputVal > aJson.getArrayItem(inputMap, 1)->valueint) mappedInputVal = 1;
-                 else return;
+    int analogReadValue = analogRead(pin);
+    if (inputMap && inputMap->type == aJson_Array) {
+        int fromMax, fromMin, toMax, toMin;
+        if (aJson.getArraySize(inputMap) >= 4) {
+            fromMin = aJson.getArrayItem(inputMap, 0)->valueint;
+            fromMax = aJson.getArrayItem(inputMap, 1)->valueint;
+            toMin = aJson.getArrayItem(inputMap, 2)->valueint;
+            toMax = aJson.getArrayItem(inputMap, 3)->valueint;
+            mappedInputValue = map(analogReadValue, fromMin, fromMax, toMin, toMax);
+            if (aJson.getArraySize(inputMap) == 5)
+                analogNoise = aJson.getArrayItem(inputMap, 4)->valueint;
+            if (mappedInputValue > toMax)
+                mappedInputValue = toMax;
+        }else if (aJson.getArraySize(inputMap) == 2) {
+            simple = 1;
+            if (mappedInputValue < aJson.getArrayItem(inputMap, 0)->valueint) mappedInputValue = 0;
+            else if (mappedInputValue > aJson.getArrayItem(inputMap, 1)->valueint) mappedInputValue = 1;
+            else return;
         }
-      }
+    }
     if (simple) {
-       if (mappedInputVal != store->currentValue)
+       if (analogReadValue != store->currentValue)
        {
-           onContactChanged(mappedInputVal);
-           store->currentValue = mappedInputVal;
+           onContactChanged(analogReadValue);
+           store->currentValue = analogReadValue;
        }}
     else
-    if (abs(mappedInputVal - store->currentValue)>Noize) // value changed >ANALOG_NOIZE
+    if (abs(mappedInputValue - store->currentValue)>analogNoise) // value changed >ANALOG_NOIZE
         store->bounce = 0;
      else // no change
         if (store->bounce<ANALOG_STATE_ATTEMPTS) store->bounce ++;
 
-        if (store->bounce<ANALOG_STATE_ATTEMPTS-1 && (mappedInputVal != store->currentValue))  //confirmed change
+        if (store->bounce<ANALOG_STATE_ATTEMPTS-1 && (mappedInputValue != store->currentValue))  //confirmed change
         {
-            onAnalogChanged(mappedInputVal);
-            store->currentValue = mappedInputVal;
+            onAnalogChanged(mappedInputValue);
+            store->currentValue = mappedInputValue;
         }
 
 }

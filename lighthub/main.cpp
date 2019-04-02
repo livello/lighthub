@@ -162,7 +162,6 @@ void watchdogSetup(void) {}    //Do not remove - strong re-definition WDT Init f
 void mqttCallback(char *topic, byte *payload, unsigned int length) {
     debugSerial<<F("\n[")<<topic<<F("] ");
     if (!payload) return;
-
     payload[length] = 0;
     int fr = freeRam();
     if (fr < 250) {
