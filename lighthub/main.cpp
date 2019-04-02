@@ -151,6 +151,7 @@ aJsonObject *pollingItem = NULL;
 
 bool owReady = false;
 bool configOk = false;
+bool configFromEEPROMLoaded;
 
 #ifdef _modbus
 ModbusMaster node;
@@ -171,7 +172,6 @@ void watchdogSetup(void) {}    //Do not remove - strong re-definition WDT Init f
 void mqttCallback(char *topic, byte *payload, unsigned int length) {
     debugSerial<<F("\n[")<<topic<<F("] ");
     if (!payload) return;
-
     payload[length] = 0;
     int fr = freeRam();
     if (fr < 250) {
@@ -624,7 +624,6 @@ if (WiFi.status() != WL_CONNECTED)
 #endif
 #endif
 
-/*
 #if defined(ARDUINO_ARCH_ESP32) and defined(WIFI_MANAGER_DISABLE)
     if(!wifiInitialized) {
     //    WiFi.mode(WIFI_STA);
@@ -641,16 +640,26 @@ if (WiFi.status() != WL_CONNECTED)
         wifiInitialized = true;
     }
 #endif
-*/
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_ESP8266)
     if (WiFi.status() == WL_CONNECTED) {
         debugSerial<<F("WiFi connected. IP address: ")<<WiFi.localIP()<<endl;
         lanStatus = HAVE_IP_ADDRESS;//1;
+#if defined(ESP8266_DEEPSLEEP)
+        if(configFromEEPROMLoaded) {
+            lanStatus = IP_READY_CONFIG_LOADED_CONNECTING_TO_BROKER;
+            ip_ready_config_loaded_connecting_to_broker();
+        }
+#endif
     } else
     {
         debugSerial<<F("Problem with WiFi!");
-        nextLanCheckTime = millis() + DHCP_RETRY_INTERVAL;
+#if defined(ARDUINO_ARCH_ESP8266) and not defined(WIFI_MANAGER_DISABLE)
+        debugSerial<<F("Restarting by hitting WifiManager Timeout...");
+        ESP.restart();
+#endif
+        nextLanCheckTime = millis() + DHCP_RETRY_INTERVAL/5;
+
     }
 #endif
 
@@ -733,7 +742,6 @@ void softRebootFunc() {
     RSTC->RSTC_CR = 0xA5000005;
 }
 #endif
-
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 void softRebootFunc(){
@@ -957,7 +965,7 @@ void cmdFunctionLoad(int arg_cnt, char **args) {
 int loadConfigFromEEPROM()
 {
     char ch;
-    debugSerial<<F("loading Config");
+    debugSerial<<F("loading Config...");
 
     ch = EEPROM.read(EEPROM_offset);
     if (ch == '{') {
@@ -965,15 +973,16 @@ int loadConfigFromEEPROM()
         aJson.deleteItem(root);
         root = aJson.parse(&as);
         if (!root) {
-            debugSerial<<F("\nload failed\n");
+            debugSerial<<F("load failed!!!\n");
             return 0;
         }
-        debugSerial<<F("\nLoaded\n");
+        debugSerial<<F(" OK:Loaded\n");
         applyConfig();
-        ethClient.stop(); //Refresh MQTT connect to get retained info
+        configFromEEPROMLoaded=true;
+        ethClient.stop(); //TODO: Spike-PATCH refresh MQTT connect to get retained info
         return 1;
     } else {
-        debugSerial<<F("\nNo stored config\n");
+        debugSerial<<F(" No stored config\n");
         return 0;
     }
     return 0;
@@ -1317,8 +1326,6 @@ void setup_main() {
     setupCmdArduino();
     printFirmwareVersionAndBuildOptions();
 
-    scan_i2c_bus();
-
 #ifdef SD_CARD_INSERTED
     sd_card_w5100_setup();
 #endif
@@ -1348,7 +1355,7 @@ void setup_main() {
     //owReady = 0;
 
 #ifdef _owire
-    if (oneWire) oneWire->idle(&owIdle);
+    if (ds2482_OneWire) ds2482_OneWire->idle(&owIdle);
 #endif
 
     mqttClient.setCallback(mqttCallback);
@@ -1358,15 +1365,13 @@ void setup_main() {
 #endif
 
 #if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
-//    WiFiManager wifiManager;
-    wifiManager.setTimeout(180);
-
+    WiFiManager wifiManager;
+    wifiManager.setConfigPortalTimeout(15);
 #if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
-    wifiInitialized = wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
+    wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
 #else
-    wifiInitialized = wifiManager.autoConnect();
+    wifiManager.autoConnect();
 #endif
-
 #endif
 
     delay(LAN_INIT_DELAY);//for LAN-shield initializing
@@ -1538,6 +1543,63 @@ void setupCmdArduino() {
     cmdAdd("clear",cmdFunctionClearEEPROM);
     cmdAdd("reboot",cmdFunctionReboot);
 }
+void setup_main() {
+    //Serial.println("Hello");
+    //delay(1000);
+    setupCmdArduino();
+    printFirmwareVersionAndBuildOptions();
+
+#ifdef SD_CARD_INSERTED
+    sd_card_w5100_setup();
+#endif
+    setupMacAddress();
+
+#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
+    WiFiManager wifiManager;
+    wifiManager.setConfigPortalTimeout(15);
+#if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
+    wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
+#else
+    wifiManager.autoConnect();
+#endif
+#endif
+
+#if defined(ARDUINO_ARCH_ESP8266)
+    EEPROM.begin(ESP_EEPROM_SIZE);
+#endif
+    loadConfigFromEEPROM();
+
+#ifdef _modbus
+    #ifdef CONTROLLINO
+    //set PORTJ pin 5,6 direction (RE,DE)
+    DDRJ |= B01100000;
+    //set RE,DE on LOW
+    PORTJ &= B10011111;
+#else
+    pinMode(TXEnablePin, OUTPUT);
+#endif
+        modbusSerial.begin(MODBUS_SERIAL_BAUD);
+        node.idle(&modbusIdle);
+        node.preTransmission(preTransmission);
+        node.postTransmission(postTransmission);
+#endif
+
+    delay(20);
+    //owReady = 0;
+
+#ifdef _owire
+    if (ds2482_OneWire) ds2482_OneWire->idle(&owIdle);
+#endif
+
+    mqttClient.setCallback(mqttCallback);
+
+#ifdef _artnet
+    ArtnetSetup();
+#endif
+
+    delay(LAN_INIT_DELAY);//for LAN-shield initializing
+    //TODO: checkForRemoteSketchUpdate();
+}
 
 void loop_main() {
     wdt_res();
@@ -1567,7 +1629,6 @@ void loop_main() {
 //#endif
     }
 
-
     inputLoop();
 
 #if defined (_espdmx)
@@ -1578,7 +1639,11 @@ void loop_main() {
 //        debugSerial<<F("#"));
 //        udpSyslog.log(LOG_INFO, "Ping syslog:");
 #endif
-
+#if defined(ESP8266_DEEPSLEEP)
+    debugSerial<<"going sleep...\n";
+    delay(1000);
+    ESP.deepSleep(ESP8266_DEEPSLEEP*1000);
+#endif
 }
 
 void owIdle(void) {
