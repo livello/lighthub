@@ -1320,64 +1320,6 @@ void postTransmission() {
     #endif
 }
 
-void setup_main() {
-  //Serial.println("Hello");
-  //delay(1000);
-    setupCmdArduino();
-    printFirmwareVersionAndBuildOptions();
-
-#ifdef SD_CARD_INSERTED
-    sd_card_w5100_setup();
-#endif
-    setupMacAddress();
-
-#if defined(ARDUINO_ARCH_ESP8266)
-      EEPROM.begin(ESP_EEPROM_SIZE);
-#endif
-    loadConfigFromEEPROM();
-
-#ifdef _modbus
-    #ifdef CONTROLLINO
-    //set PORTJ pin 5,6 direction (RE,DE)
-    DDRJ |= B01100000;
-    //set RE,DE on LOW
-    PORTJ &= B10011111;
-#else
-    pinMode(TXEnablePin, OUTPUT);
-#endif
-        modbusSerial.begin(MODBUS_SERIAL_BAUD);
-        node.idle(&modbusIdle);
-        node.preTransmission(preTransmission);
-        node.postTransmission(postTransmission);
-#endif
-
-    delay(20);
-    //owReady = 0;
-
-#ifdef _owire
-    if (ds2482_OneWire) ds2482_OneWire->idle(&owIdle);
-#endif
-
-    mqttClient.setCallback(mqttCallback);
-
-#ifdef _artnet
-    ArtnetSetup();
-#endif
-
-#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
-    WiFiManager wifiManager;
-    wifiManager.setConfigPortalTimeout(15);
-#if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
-    wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
-#else
-    wifiManager.autoConnect();
-#endif
-#endif
-
-    delay(LAN_INIT_DELAY);//for LAN-shield initializing
-    //TODO: checkForRemoteSketchUpdate();
-}
-
 void printFirmwareVersionAndBuildOptions() {
     debugSerial<<F("\nLazyhome.ru LightHub controller ")<<F(QUOTE(PIO_SRC_REV))<<F(" C++ version:")<<F(QUOTE(__cplusplus))<<endl;
 #ifdef CONTROLLINO
