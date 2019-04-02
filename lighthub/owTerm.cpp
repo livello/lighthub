@@ -26,7 +26,7 @@ e-mail    anklimov@gmail.com
 #include "options.h"
 
 
-OneWire *ds2482_OneWire = NULL;
+OneWire *oneWire = NULL;
 
 DeviceAddress *term = NULL;
 
@@ -48,12 +48,12 @@ int owUpdate() {
 
 
     Serial.println(F("Searching"));
-    if (ds2482_OneWire) ds2482_OneWire->reset_search();
+    if (oneWire) oneWire->reset_search();
     for (short i = 0; i < t_count; i++) wstat[i] &= ~SW_FIND; //absent
 
-    while (ds2482_OneWire && ds2482_OneWire->wireSearch(term[t_count]) > 0 && (t_count < t_max) && finish > millis()) {
+    while (oneWire && oneWire->wireSearch(term[t_count]) > 0 && (t_count < t_max) && finish > millis()) {
         short ifind = -1;
-        if (ds2482_OneWire->crc8(term[t_count], 7) == term[t_count][7]) {
+        if (oneWire->crc8(term[t_count], 7) == term[t_count][7]) {
             for (short i = 0; i < t_count; i++)
                 if (!memcmp(term[i], term[t_count], 8)) {
                     ifind = i;
@@ -70,7 +70,7 @@ int owUpdate() {
                 debugSerial.println();
                 if (term[t_count][0] == 0x28) {
                     sensors->setResolution(term[t_count], TEMPERATURE_PRECISION);
-                    ds2482_OneWire->setStrongPullup();
+                    oneWire->setStrongPullup();
                     //                sensors.requestTemperaturesByAddress(term[t_count]);
                 }
                 t_count++;
@@ -86,16 +86,21 @@ int owUpdate() {
 int owSetup(owChangedType owCh) {
 #ifndef OWIRE_DISABLE
     //// todo - move memory allocation to here
-    if (ds2482_OneWire) return true;    // Already initialized
+    if (oneWire) return true;    // Already initialized
 #ifdef DS2482_100_I2C_TO_1W_BRIDGE
-    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init");
-    ds2482_OneWire = new OneWire;
+    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init")<<endl;
+    oneWire = new OneWire;
 #else
     debugSerial.print(F("One wire setup on PIN:"));
     debugSerial.println(QUOTE(USE_1W_PIN));
-    net = new OneWire (USE_1W_PIN);
+    oneWire = new OneWire (USE_1W_PIN);
 #endif
-    sensors = new DallasTemperature(ds2482_OneWire);
+
+
+
+// Pass our oneWire reference to Dallas Temperature.
+    sensors = new DallasTemperature(oneWire);
+
     term = new DeviceAddress[t_max];
     wstat = new uint16_t[t_max];
 
