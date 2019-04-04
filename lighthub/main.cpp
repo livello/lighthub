@@ -151,6 +151,7 @@ aJsonObject *pollingItem = NULL;
 
 bool owReady = false;
 bool configOk = false;
+bool configFromEEPROMLoaded=false;
 
 #ifdef _modbus
 ModbusMaster node;
@@ -943,6 +944,7 @@ int loadConfigFromEEPROM()
         }
         debugSerial<<F("\nLoaded\n");
         applyConfig();
+        configFromEEPROMLoaded=true;
         ethClient.stop(); //Refresh MQTT connect to get retained info
         return 1;
     } else {
@@ -1049,6 +1051,9 @@ void cmdFunctionClearEEPROM(int arg_cnt, char **args){
     for (int i = 0; i < 512; i++)
         EEPROM.write(i, 0);
     debugSerial<<F("EEPROM cleared\n");
+#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
+    WiFi.disconnect();
+#endif
 
 }
 
@@ -1284,68 +1289,6 @@ void postTransmission() {
     #endif
 }
 
-void setup_main() {
-  //Serial.println("Hello");
-  //delay(1000);
-    setupCmdArduino();
-    printFirmwareVersionAndBuildOptions();
-
-    scan_i2c_bus();
-
-#ifdef SD_CARD_INSERTED
-    sd_card_w5100_setup();
-#endif
-    setupMacAddress();
-
-#if defined(ARDUINO_ARCH_ESP8266)
-      EEPROM.begin(ESP_EEPROM_SIZE);
-#endif
-    loadConfigFromEEPROM();
-
-#ifdef _modbus
-    #ifdef CONTROLLINO
-    //set PORTJ pin 5,6 direction (RE,DE)
-    DDRJ |= B01100000;
-    //set RE,DE on LOW
-    PORTJ &= B10011111;
-#else
-    pinMode(TXEnablePin, OUTPUT);
-#endif
-        modbusSerial.begin(MODBUS_SERIAL_BAUD);
-        node.idle(&modbusIdle);
-        node.preTransmission(preTransmission);
-        node.postTransmission(postTransmission);
-#endif
-
-    delay(20);
-    //owReady = 0;
-
-#ifdef _owire
-    if (oneWire) oneWire->idle(&owIdle);
-#endif
-
-    mqttClient.setCallback(mqttCallback);
-
-#ifdef _artnet
-    ArtnetSetup();
-#endif
-
-#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
-//    WiFiManager wifiManager;
-    wifiManager.setTimeout(180);
-
-#if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
-    wifiInitialized = wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
-#else
-    wifiInitialized = wifiManager.autoConnect();
-#endif
-
-#endif
-
-    delay(LAN_INIT_DELAY);//for LAN-shield initializing
-    //TODO: checkForRemoteSketchUpdate();
-}
-
 void printFirmwareVersionAndBuildOptions() {
     debugSerial<<F("\nLazyhome.ru LightHub controller ")<<F(QUOTE(PIO_SRC_REV))<<F(" C++ version:")<<F(QUOTE(__cplusplus))<<endl;
 #ifdef CONTROLLINO
@@ -1511,7 +1454,76 @@ void setupCmdArduino() {
     cmdAdd("clear",cmdFunctionClearEEPROM);
     cmdAdd("reboot",cmdFunctionReboot);
 }
+void setup_main() {
+    //Serial.println("Hello");
+    //delay(1000);
+    setupCmdArduino();
+    printFirmwareVersionAndBuildOptions();
 
+    scan_i2c_bus();
+
+#ifdef SD_CARD_INSERTED
+    sd_card_w5100_setup();
+#endif
+    setupMacAddress();
+
+#if defined(ARDUINO_ARCH_ESP8266)
+    EEPROM.begin(ESP_EEPROM_SIZE);
+#endif
+    loadConfigFromEEPROM();
+
+#ifdef _modbus
+    #ifdef CONTROLLINO
+    //set PORTJ pin 5,6 direction (RE,DE)
+    DDRJ |= B01100000;
+    //set RE,DE on LOW
+    PORTJ &= B10011111;
+#else
+    pinMode(TXEnablePin, OUTPUT);
+#endif
+        modbusSerial.begin(MODBUS_SERIAL_BAUD);
+        node.idle(&modbusIdle);
+        node.preTransmission(preTransmission);
+        node.postTransmission(postTransmission);
+#endif
+
+    delay(20);
+    //owReady = 0;
+
+#ifdef _owire
+    if (oneWire) oneWire->idle(&owIdle);
+#endif
+
+    mqttClient.setCallback(mqttCallback);
+
+#ifdef _artnet
+    ArtnetSetup();
+#endif
+
+#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
+//    WiFiManager wifiManager;
+    wifiManager.setTimeout(180);
+#if defined(ESP8266_SETUP_PIN)
+    pinMode(ESP8266_SETUP_PIN,INPUT_PULLUP);
+    if(digitalRead(ESP8266_SETUP_PIN)) {
+        debugSerial<<F("---SETUP MODE---");
+        WiFi.disconnect();
+    }
+    else
+        debugSerial<<F("---Normal mode---");
+#endif
+
+#if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
+    wifiInitialized = wifiManager.autoConnect(QUOTE(ESP_WIFI_AP), QUOTE(ESP_WIFI_PWD));
+#else
+    wifiInitialized = wifiManager.autoConnect();
+#endif
+
+#endif
+
+    delay(LAN_INIT_DELAY);//for LAN-shield initializing
+    //TODO: checkForRemoteSketchUpdate();
+}
 void loop_main() {
     wdt_res();
     cmdPoll();
