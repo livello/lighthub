@@ -21,10 +21,10 @@ e-mail    anklimov@gmail.com
 #include "utils.h"
 #include "options.h"
 #include "stdarg.h"
-#include <wire.h>
 
 #if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32)
 #include <malloc.h>
+#include <wire.h>
 #endif
 
 #if defined(ESP8266)
@@ -432,6 +432,7 @@ void printUlongValueToStr(char *valstr, unsigned long value) {
 
 
 void scan_i2c_bus() {
+#if defined(__SAM3X8E__)
     byte error, address;
     int nDevices;
 
@@ -468,6 +469,7 @@ void scan_i2c_bus() {
         debugSerial<<("No I2C devices found\n");
     else
         debugSerial<<("done\n");
+#endif
 }
 
 
