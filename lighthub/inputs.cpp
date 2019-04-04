@@ -512,11 +512,11 @@ void Input::onContactChanged(int newValue) {
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
     if (emit) {
 #ifdef WITH_DOMOTICZ
-        if (getIdxField()) {           (newValue) ? publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"On\"}",
-            : publishDataToDomoticz(0,emit,"{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",getIdxField());	                                               getIdxField())
-                       : publishDataToDomoticz(0, emit,
-                                               "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",
-                                               getIdxField());
+        if (getIdxField()) {
+            if(newValue)
+                publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"On\"}",getIdxField());
+            else
+                publishDataToDomoticz(0,emit,"{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",getIdxField());
                           } else
 #endif
 {
