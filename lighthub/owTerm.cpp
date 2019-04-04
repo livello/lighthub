@@ -26,7 +26,7 @@ e-mail    anklimov@gmail.com
 #include "options.h"
 
 
-OneWire *ds2482_OneWire = NULL;
+OneWire *oneWire = NULL;
 
 DeviceAddress *term = NULL;
 
@@ -39,8 +39,6 @@ unsigned long owTimer = 0;
 
 owChangedType owChanged;
 
-void scan_i2c_bus();
-
 int owUpdate() {
 #ifndef OWIRE_DISABLE
     unsigned long finish = millis() + OW_UPDATE_INTERVAL;
@@ -48,12 +46,12 @@ int owUpdate() {
 
 
     Serial.println(F("Searching"));
-    if (ds2482_OneWire) ds2482_OneWire->reset_search();
+    if (oneWire) oneWire->reset_search();
     for (short i = 0; i < t_count; i++) wstat[i] &= ~SW_FIND; //absent
 
-    while (ds2482_OneWire && ds2482_OneWire->wireSearch(term[t_count]) > 0 && (t_count < t_max) && finish > millis()) {
+    while (oneWire && oneWire->wireSearch(term[t_count]) > 0 && (t_count < t_max) && finish > millis()) {
         short ifind = -1;
-        if (ds2482_OneWire->crc8(term[t_count], 7) == term[t_count][7]) {
+        if (oneWire->crc8(term[t_count], 7) == term[t_count][7]) {
             for (short i = 0; i < t_count; i++)
                 if (!memcmp(term[i], term[t_count], 8)) {
                     ifind = i;
@@ -70,7 +68,7 @@ int owUpdate() {
                 debugSerial.println();
                 if (term[t_count][0] == 0x28) {
                     sensors->setResolution(term[t_count], TEMPERATURE_PRECISION);
-                    ds2482_OneWire->setStrongPullup();
+                    oneWire->setStrongPullup();
                     //                sensors.requestTemperaturesByAddress(term[t_count]);
                 }
                 t_count++;
@@ -86,80 +84,59 @@ int owUpdate() {
 int owSetup(owChangedType owCh) {
 #ifndef OWIRE_DISABLE
     //// todo - move memory allocation to here
-    if (ds2482_OneWire) return true;    // Already initialized
+    if (oneWire) return true;    // Already initialized
 #ifdef DS2482_100_I2C_TO_1W_BRIDGE
-    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init");
-    ds2482_OneWire = new OneWire;
+    debugSerial<<F("DS2482_100_I2C_TO_1W_BRIDGE init")<<endl;
+    oneWire = new OneWire;
 #else
     debugSerial.print(F("One wire setup on PIN:"));
     debugSerial.println(QUOTE(USE_1W_PIN));
-    net = new OneWire (USE_1W_PIN);
+    oneWire = new OneWire (USE_1W_PIN);
 #endif
-    sensors = new DallasTemperature(ds2482_OneWire);
+
+
+
+// Pass our oneWire reference to Dallas Temperature.
+    sensors = new DallasTemperature(oneWire);
+
     term = new DeviceAddress[t_max];
+//regs = new    int [t_max];
     wstat = new uint16_t[t_max];
+
 
 #ifdef DS2482_100_I2C_TO_1W_BRIDGE
     Wire.begin();
-    scan_i2c_bus();
-    if (ds2482_OneWire->checkPresence()) {
+    if (oneWire->checkPresence()) {
         debugSerial.println(F("DS2482-100 present"));
-        ds2482_OneWire->deviceReset();
-        ds2482_OneWire->setActivePullup();
+        oneWire->deviceReset();
+#ifdef APU_OFF
+        debugSerial.println(F("APU off"));
+#else
+        oneWire->setActivePullup();
+#endif
+
         debugSerial.println(F("\tChecking for 1-Wire devices..."));
-        if (ds2482_OneWire->wireReset())
+        if (oneWire->wireReset())
             debugSerial.println(F("\tReset done"));
+
         sensors->begin();
         owChanged = owCh;
         //owUpdate();
         //debugSerial.println(F("\t1-w Updated"));
         sensors->setWaitForConversion(false);
+
+
         return true;
     }
 #endif
     debugSerial.println(F("\tDS2482 error"));
     return false;
     // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+
+
+    delay(500);
+
 #endif
-}
-
-void scan_i2c_bus() {
-    byte error, address;
-    int nDevices;
-
-    debugSerial<<("Scanning...\n");
-
-    nDevices = 0;
-    for(address = 1; address < 127; address++ )
-    {
-        // The i2c_scanner uses the return value of
-        // the Write.endTransmisstion to see if
-        // a device did acknowledge to the address.
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
-
-        if (error == 0)
-        {
-            debugSerial<<("\nI2C device found at address 0x");
-            if (address<16)
-                debugSerial<<("0");
-            debugSerial<<(address,HEX);
-            debugSerial<<("  !");
-
-            nDevices++;
-        }
-        else if (error==4)
-        {
-            debugSerial<<("\nUnknow error at address 0x");
-            if (address<16)
-                debugSerial<<("0");
-            debugSerial<<(address,HEX);
-        }
-    }
-    if (nDevices == 0)
-        debugSerial<<("No I2C devices found\n");
-    else
-        debugSerial<<("done\n");
 }
 
 
@@ -214,7 +191,7 @@ void owAdd(DeviceAddress addr) {
     debugSerial.println();
     if (term[t_count][0] == 0x28) {
         sensors->setResolution(term[t_count], TEMPERATURE_PRECISION);
-        ds2482_OneWire->setStrongPullup();
+        oneWire->setStrongPullup();
         //                sensors.requestTemperaturesByAddress(term[t_count]);
     }
     t_count++;
