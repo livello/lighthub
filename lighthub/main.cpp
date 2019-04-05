@@ -1483,7 +1483,7 @@ void setup_main() {
     wifiManager.setTimeout(180);
 #if defined(ESP8266_SETUP_PIN)
     pinMode(ESP8266_SETUP_PIN,INPUT_PULLUP);
-    if(digitalRead(ESP8266_SETUP_PIN)==HIGH) {
+    if(digitalRead(ESP8266_SETUP_PIN)==LOW) {
         debugSerial<<F("---SETUP MODE---");
         cmdFunctionClearEEPROM(0, nullptr);
         setupModeActivated=true;
@@ -1492,8 +1492,13 @@ void setup_main() {
 //        wifiManager.h
 
     }
-    else
-        debugSerial<<F("---Normal mode---");
+    else {
+#if defined (ESP8266_DHT_POWER_PIN)
+        pinMode(ESP8266_DHT_POWER_PIN,OUTPUT);
+        digitalWrite(ESP8266_DHT_POWER_PIN,HIGH);
+#endif
+        debugSerial << F("---Normal mode---");
+    }
 #endif
 
     loadConfigFromEEPROM();
@@ -1580,6 +1585,9 @@ void loop_main() {
     if(setupModeActivated)
         return;
     debugSerial<<"going sleep...\n";
+#if defined (ESP8266_DHT_POWER_PIN)
+        digitalWrite(ESP8266_DHT_POWER_PIN,LOW);
+#endif
     delay(1000);
     ESP.deepSleep(ESP8266_DEEPSLEEP*1000);
 #endif
