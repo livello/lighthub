@@ -152,7 +152,7 @@ aJsonObject *pollingItem = NULL;
 bool owReady = false;
 bool configOk = false;
 bool configFromEEPROMLoaded=false;
-
+bool setupModeActivated = false;
 #ifdef _modbus
 ModbusMaster node;
 #endif
@@ -648,6 +648,12 @@ if (WiFi.status() != WL_CONNECTED)
     if (WiFi.status() == WL_CONNECTED) {
         debugSerial<<F("WiFi connected. IP address: ")<<WiFi.localIP()<<endl;
         lanStatus = HAVE_IP_ADDRESS;//1;
+#if defined(ESP8266_DEEPSLEEP)
+        if(configFromEEPROMLoaded) {
+            lanStatus = IP_READY_CONFIG_LOADED_CONNECTING_TO_BROKER;
+            ip_ready_config_loaded_connecting_to_broker();
+        }
+#endif
     } else
     {
         debugSerial<<F("Problem with WiFi!");
@@ -1049,7 +1055,8 @@ void cmdFunctionIp(int arg_cnt, char **args)
 
 void cmdFunctionClearEEPROM(int arg_cnt, char **args){
     for (int i = 0; i < 512; i++)
-        EEPROM.write(i, 0);
+        if(EEPROM.read(i)!=0)
+            EEPROM.write(i, 0);
     debugSerial<<F("EEPROM cleared\n");
 #if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
     WiFi.disconnect();
@@ -1267,7 +1274,9 @@ lan_status loadConfigFromHttp(int arg_cnt, char **args)
     }
     httpClient.end();
 #endif
-
+    if(setupModeActivated) {
+        cmdFunctionSave(0, nullptr);
+    }
     return IP_READY_CONFIG_LOADED_CONNECTING_TO_BROKER;
 }
 
@@ -1470,6 +1479,23 @@ void setup_main() {
 #if defined(ARDUINO_ARCH_ESP8266)
     EEPROM.begin(ESP_EEPROM_SIZE);
 #endif
+#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
+    wifiManager.setTimeout(180);
+#if defined(ESP8266_SETUP_PIN)
+    pinMode(ESP8266_SETUP_PIN,INPUT_PULLUP);
+    if(digitalRead(ESP8266_SETUP_PIN)==HIGH) {
+        debugSerial<<F("---SETUP MODE---");
+        cmdFunctionClearEEPROM(0, nullptr);
+        setupModeActivated=true;
+        WiFi.disconnect();
+        wifiManager.autoConnect(QUOTE(DEVICE_NAME));
+//        wifiManager.h
+
+    }
+    else
+        debugSerial<<F("---Normal mode---");
+#endif
+
     loadConfigFromEEPROM();
 
 #ifdef _modbus
@@ -1498,19 +1524,6 @@ void setup_main() {
 
 #ifdef _artnet
     ArtnetSetup();
-#endif
-
-#if (defined(ARDUINO_ARCH_ESP8266) or defined(ARDUINO_ARCH_ESP32)) and not defined(WIFI_MANAGER_DISABLE)
-//    WiFiManager wifiManager;
-    wifiManager.setTimeout(180);
-#if defined(ESP8266_SETUP_PIN)
-    pinMode(ESP8266_SETUP_PIN,INPUT_PULLUP);
-    if(digitalRead(ESP8266_SETUP_PIN)) {
-        debugSerial<<F("---SETUP MODE---");
-        WiFi.disconnect();
-    }
-    else
-        debugSerial<<F("---Normal mode---");
 #endif
 
 #if defined(ESP_WIFI_AP) and defined(ESP_WIFI_PWD)
@@ -1563,7 +1576,13 @@ void loop_main() {
 //        debugSerial<<F("#"));
 //        udpSyslog.log(LOG_INFO, "Ping syslog:");
 #endif
-
+#if defined(ESP8266_DEEPSLEEP)
+    if(setupModeActivated)
+        return;
+    debugSerial<<"going sleep...\n";
+    delay(1000);
+    ESP.deepSleep(ESP8266_DEEPSLEEP*1000);
+#endif
 }
 
 void owIdle(void) {
