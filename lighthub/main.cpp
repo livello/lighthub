@@ -1591,7 +1591,8 @@ void loop_main() {
 #endif
 
     int deepSleepTimeMs=ESP8266_DEEPSLEEP;
-    if (deepSleepArr&& (aJson.getArraySize(deepSleepArr)))
+    deepSleepArr = aJson.getObjectItem(root, "deep_sleep");
+    if (deepSleepArr && (aJson.getArraySize(deepSleepArr)))
         deepSleepTimeMs=aJson.getArrayItem(mqttArr, 0)->valueint;
 
     debugSerial<<F("going sleep: ")<<deepSleepTimeMs;
