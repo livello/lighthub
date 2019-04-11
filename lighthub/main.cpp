@@ -1595,7 +1595,8 @@ void loop_main() {
     if (deepSleepArr && (aJson.getArraySize(deepSleepArr)))
         deepSleepTimeMs = aJson.getArrayItem(mqttArr, 0)->valueint;
 
-    debugSerial << F("going sleep: ")<<deepSleepTimeMs;
+    debugSerial << F("going sleep: ");
+    debugSerial.print(deepSleepTimeMs);
     delay(1000);
     ESP.deepSleep(deepSleepTimeMs * 1000);
 #endif
