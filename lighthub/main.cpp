@@ -128,6 +128,7 @@ aJsonObject *items = NULL;
 aJsonObject *inputs = NULL;
 
 aJsonObject *mqttArr = NULL;
+aJsonObject *deepSleepArr = NULL;
 #ifndef MODBUS_DISABLE
 aJsonObject *modbusArr = NULL;
 #endif
@@ -899,6 +900,7 @@ void applyConfig() {
     }
     inputs = aJson.getObjectItem(root, "in");
     mqttArr = aJson.getObjectItem(root, "mqtt");
+    deepSleepArr = aJson.getObjectItem(root, "deep_sleep");
 
    inputSetup();
 #ifdef SYSLOG_ENABLE
@@ -1584,12 +1586,17 @@ void loop_main() {
 #if defined(ESP8266_DEEPSLEEP)
     if(setupModeActivated)
         return;
-    debugSerial<<"going sleep...\n";
 #if defined (ESP8266_DHT_POWER_PIN)
-        digitalWrite(ESP8266_DHT_POWER_PIN,LOW);
+    digitalWrite(ESP8266_DHT_POWER_PIN,LOW);
 #endif
+
+    int deepSleepTimeMs=ESP8266_DEEPSLEEP;
+    if (deepSleepArr&& (aJson.getArraySize(deepSleepArr)))
+        deepSleepTimeMs=aJson.getArrayItem(mqttArr, 0)->valueint;
+
+    debugSerial<<F("going sleep: ")<<deepSleepTimeMs;
     delay(1000);
-    ESP.deepSleep(ESP8266_DEEPSLEEP*1000);
+    ESP.deepSleep(deepSleepTimeMs*1000);
 #endif
 }
 
