@@ -1590,14 +1590,14 @@ void loop_main() {
     digitalWrite(ESP8266_DHT_POWER_PIN,LOW);
 #endif
 
-    uint32_t deepSleepTimeMs=ESP8266_DEEPSLEEP;
+    long deepSleepTimeMs = ESP8266_DEEPSLEEP;
     deepSleepArr = aJson.getObjectItem(root, "deep_sleep");
     if (deepSleepArr && (aJson.getArraySize(deepSleepArr)))
-        deepSleepTimeMs=aJson.getArrayItem(mqttArr, 0)->valueint;
+        deepSleepTimeMs = aJson.getArrayItem(mqttArr, 0)->valueint;
 
-    debugSerial<<F("going sleep: ")<<deepSleepTimeMs;
+    debugSerial << F("going sleep: ")<<deepSleepTimeMs;
     delay(1000);
-    ESP.deepSleep(deepSleepTimeMs*1000);
+    ESP.deepSleep(deepSleepTimeMs * 1000);
 #endif
 }
 
