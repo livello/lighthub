@@ -1594,6 +1594,8 @@ void loop_main() {
     deepSleepArr = aJson.getObjectItem(root, "deep_sleep");
     if (deepSleepArr && (aJson.getArraySize(deepSleepArr)))
         deepSleepTimeMs = aJson.getArrayItem(mqttArr, 0)->valueint;
+    if(deepSleepTimeMs>3600000)
+        debugSerial<<F("Possible Error! More than 1h deep sleep...\n");
 
     debugSerial << F("going sleep: ");
     debugSerial.print(deepSleepTimeMs);
