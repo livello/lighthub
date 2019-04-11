@@ -1593,7 +1593,7 @@ void loop_main() {
     long deepSleepTimeMs = ESP8266_DEEPSLEEP;
     deepSleepArr = aJson.getObjectItem(root, "deep_sleep");
     if (deepSleepArr && (aJson.getArraySize(deepSleepArr))) {
-        deepSleepTimeMs = aJson.getArrayItem(mqttArr, 0)->valueint;
+        deepSleepTimeMs = aJson.getArrayItem(deepSleepArr, 0)->valueint;
         debugSerial<<F("Get deep_sleep time from config.\n");
     }
     if(deepSleepTimeMs>3600000)
