@@ -1584,6 +1584,8 @@ void loop_main() {
 //        udpSyslog.log(LOG_INFO, "Ping syslog:");
 #endif
 #if defined(ESP8266_DEEPSLEEP)
+    if(setupModeActivated)
+        return;
 #if defined (ESP8266_DHT_POWER_PIN)
     digitalWrite(ESP8266_DHT_POWER_PIN,LOW);
 #endif
@@ -1597,11 +1599,8 @@ void loop_main() {
     if(deepSleepTimeMs>3600000)
         debugSerial<<F("Possible Error! More than 1h deep sleep...\n");
 
-    debugSerial << F("going to sleep: ")<<deepSleepTimeMs<<"ms";
-
-    if(setupModeActivated)
-        return;
-
+    debugSerial << F("going sleep: ");
+    debugSerial.print(deepSleepTimeMs);
     delay(1000);
     ESP.deepSleep(deepSleepTimeMs * 1000);
 #endif
