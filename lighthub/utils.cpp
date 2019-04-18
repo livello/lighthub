@@ -24,7 +24,7 @@ e-mail    anklimov@gmail.com
 
 #if defined(__SAM3X8E__) || defined(ARDUINO_ARCH_STM32)
 #include <malloc.h>
-#include <wire.h>
+#include <Wire.h>
 #endif
 
 #if defined(ESP8266)
