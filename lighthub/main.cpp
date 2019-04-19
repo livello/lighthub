@@ -749,7 +749,8 @@ void Changed(int i, DeviceAddress addr, float currentTemp) {
     addrstr[17] = 0;
 
     printFloatValueToStr(currentTemp,valstr);
-    debugSerial<<endl<<F("T:")<<valstr<<F("<");
+    debugSerial<<endl<<F("T:")<<F("<");
+    debugSerial.print(valstr);
     aJsonObject *owObj = aJson.getObjectItem(owArr, addrstr);
     if (owObj) {
         owEmitString = aJson.getObjectItem(owObj, "emit")->valuestring;
