@@ -52,7 +52,7 @@ const char SETPOINT_P[] PROGMEM = "setpoint";
 const char POWER_P[] PROGMEM = "power";
 const char VOL_P[] PROGMEM = "vol";
 const char HEAT_P[] PROGMEM = "heat";
-const char CSV_P[] PROGMEM = "csv";
+const char HSV_P[] PROGMEM = "hsv";
 const char RGB_P[] PROGMEM = "rgb";
 const char RPM_P[] PROGMEM = "rpm";
 
@@ -63,6 +63,7 @@ extern aJsonObject *pollingItem;
 //int modbusSet(int addr, uint16_t _reg, int _mask, uint16_t value);
 
 extern PubSubClient mqttClient;
+extern int8_t ethernetIdleCount;
 //extern char  outprefix[];
 //const char outprefix[] PROGMEM = OUTTOPIC;
 
@@ -84,10 +85,11 @@ int txt2cmd(char *payload) {
     else if (strcmp_P(payload, FALSE_P) == 0) cmd = CMD_OFF;
     else if (strcmp_P(payload, INCREASE_P) == 0) cmd = CMD_UP;
     else if (strcmp_P(payload, DECREASE_P) == 0) cmd = CMD_DN;
-    else if (*payload == '-' || (*payload >= '0' && *payload <= '9')) cmd = 0;
-    else if (*payload == '{') cmd = -2;
-    else if (*payload == '#') cmd = -3;
-
+    else if (*payload == '-' || (*payload >= '0' && *payload <= '9')) cmd = CMD_NUM; //0
+    else if (*payload == '{') cmd = CMD_JSON;
+    else if (*payload == '#') cmd = CMD_RGB;
+    else if (strncmp_P(payload, HSV_P, 3) == 0) cmd = CMD_HSV;
+    else if (strncmp_P(payload, RGB_P, strlen (RGB_P)) == 0) cmd = CMD_RGB;
     return cmd;
 }
 
@@ -103,7 +105,7 @@ int txt2subItem(char *payload) {
     else if (strcmp_P(payload, POWER_P) == 0) cmd = S_POWER;
     else if (strcmp_P(payload, VOL_P) == 0) cmd = S_VOL;
     else if (strcmp_P(payload, HEAT_P) == 0) cmd = S_HEAT;
-    else if (strcmp_P(payload, CSV_P) == 0) cmd = S_CSV;
+    else if (strcmp_P(payload, HSV_P) == 0) cmd = S_HSV;
     else if (strcmp_P(payload, RGB_P) == 0) cmd = S_RGB;
     return cmd;
 }
@@ -262,8 +264,11 @@ if (subsubItem = strchr(subItem, '/'))
 if (isSet)
 {
   int cmd = txt2cmd(payload);
+  debugSerial<<F("Txt2Cmd:")<<cmd<<endl;
   switch (cmd) {
-      case 0: {
+      case CMD_NUM:
+      case CMD_HSV:
+       {
           short i = 0;
           int Par[3];
 
@@ -310,7 +315,7 @@ if (isSet)
 
 int Item::Ctrl(short cmd, short n, int *Parameters, boolean send, int subItemN) {
 
-    debugSerial<<F(" MEM=")<<freeRam()<<F(" Item=")<<itemArr->name<<F(" Sub=")<<subItemN<<F(" Cmd=")<<cmd<<F(" Par= ");
+    debugSerial<<F("RAM=")<<freeRam()<<F(" Item=")<<itemArr->name<<F(" Sub=")<<subItemN<<F(" Cmd=")<<cmd<<F(" Par= ");
     if (!itemArr) return -1;
     int Par[MAXCTRLPAR] = {0, 0, 0};
     if (Parameters)
@@ -656,17 +661,29 @@ int Item::Ctrl(short cmd, short n, int *Parameters, boolean send, int subItemN) 
             break;
         case CH_RELAY: {
             int k;
+            short inverse = 0;
+
+            if (iaddr < 0) {
+                iaddr = -iaddr;
+                inverse = 1;
+            }
             pinMode(iaddr, OUTPUT);
-            digitalWrite(iaddr, k = ((cmd == CMD_ON || cmd == CMD_XON) ? HIGH : LOW));
+
+            if (inverse)
+                digitalWrite(iaddr, k = ((cmd == CMD_ON || cmd == CMD_XON) ? LOW : HIGH));
+            else
+                digitalWrite(iaddr, k = ((cmd == CMD_ON || cmd == CMD_XON) ? HIGH : LOW));
             debugSerial<<F("Pin:")<<iaddr<<F("=")<<k<<endl;
             break;
-            case CH_THERMO:
-                ///thermoSet(name,cmd,Par1); all cativities done - update temp & cmd
+          }
+        case CH_THERMO:
+                ///thermoSet(name,cmd,Par1); all activities done - update temp & cmd
                 break;
-        }
+
         case CH_PWM: {
             int k;
             short inverse = 0;
+
             if (iaddr < 0) {
                 iaddr = -iaddr;
                 inverse = 1;
@@ -1038,13 +1055,15 @@ int Item::checkFM() {
         else aJson.addNumberToObject(out, "pwr", 0);
 
         if (ftemp > FM_OVERHEAT_CELSIUS && set) {
-            mqttClient.publish("/alarm/ovrht", itemArr->name);
+          if (mqttClient.connected()  && !ethernetIdleCount)
+              mqttClient.publish("/alarm/ovrht", itemArr->name);
             Ctrl(CMD_OFF); //Shut down
         }
     } else
         debugSerial << F("Modbus polling error=") << _HEX(result);
     outch = aJson.print(out);
-    mqttClient.publish(addrstr, outch);
+    if (mqttClient.connected()  && !ethernetIdleCount)
+        mqttClient.publish(addrstr, outch);
     free(outch);
     aJson.deleteItem(out);
     modbusBusy = 0;
@@ -1283,7 +1302,8 @@ int Item::SendStatus(short cmd, short n, int *Par, boolean deffered) {
                 return -1;
         }
         debugSerial<<F("Pub: ")<<addrstr<<F("->")<<valstr<<endl;
-        mqttClient.publish(addrstr, valstr,true);
+        if (mqttClient.connected()  && !ethernetIdleCount)
+            mqttClient.publish(addrstr, valstr,true);
         return 0;
     }
 }

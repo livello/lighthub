@@ -78,15 +78,22 @@ void SetAddr(char *out, uint8_t *addr) {
     }
 }
 
-
+// chan is pointer to pointer to string
+// Function return first retrived integer and move pointer to position next after ','
 int getInt(char **chan) {
+    if (chan && *chan && **chan)
+    {
+    //Skip non-numeric values
+    while (**chan && !(**chan == '-' || (**chan >= '0' && **chan<='9'))) *chan += 1;
     int ch = atoi(*chan);
-    *chan = strchr(*chan, ',');
 
+    //Move pointer to next element (after ,)
+    *chan = strchr(*chan, ',');
     if (*chan) *chan += 1;
     //Serial.print(F("Par:")); Serial.println(ch);
     return ch;
-
+   }
+   return 0;
 }
 
 
@@ -435,7 +442,7 @@ void scan_i2c_bus() {
     byte error, address;
     int nDevices;
 
-     debugSerial<<("Scanning...\n");
+     debugSerial<<(F("Scanning...\n"));
 
      nDevices = 0;
     for(address = 1; address < 127; address++ )
@@ -448,26 +455,25 @@ void scan_i2c_bus() {
 
          if (error == 0)
         {
-            debugSerial<<("\nI2C device found at address 0x");
-            if (address<16)
-                debugSerial<<("0");
-            debugSerial<<(address,HEX);
-            debugSerial<<("  !");
+            debugSerial<<(F("\nI2C device found at address "));
+        //    if (address<16)
+        //        debugSerial<<("0");
+            debugSerial<<(address);
 
              nDevices++;
         }
         else if (error==4)
         {
-            debugSerial<<("\nUnknow error at address 0x");
-            if (address<16)
-                debugSerial<<("0");
-            debugSerial<<(address,HEX);
+            debugSerial<<(F("\nUnknow error at address "));
+      //      if (address<16)
+      //          debugSerial<<("0");
+            debugSerial<<(address);
         }
     }
     if (nDevices == 0)
-        debugSerial<<("No I2C devices found\n");
+        debugSerial<<(F("No I2C devices found\n"));
     else
-        debugSerial<<("done\n");
+        debugSerial<<(F("done\n"));
 }
 
 

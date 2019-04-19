@@ -32,6 +32,8 @@ e-mail    anklimov@gmail.com
 #endif
 
 extern PubSubClient mqttClient;
+extern aJsonObject *root;
+extern int8_t ethernetIdleCount;
 
 #if !defined(DHT_DISABLE) || !defined(COUNTER_DISABLE)
 static volatile unsigned long nextPollMillisValue[5];
@@ -93,7 +95,7 @@ void Input::Parse()
     store = NULL;
     inType = 0;
     pin = 0;
-    if (inputObj && (inputObj->type == aJson_Object)) {
+    if (inputObj && (inputObj->type == aJson_Object) && root) {
         aJsonObject *itemBuffer;
         itemBuffer = aJson.getObjectItem(inputObj, "T");
         if (itemBuffer) inType = static_cast<uint8_t>(itemBuffer->valueint);
@@ -110,7 +112,7 @@ void Input::Parse()
 
 void Input::setup()
 {
-if (!isValid()) return;
+if (!isValid() || (!root)) return;
 
 #ifndef CSSHDC_DISABLE
   in_ccs811  ccs811(this);
@@ -222,7 +224,8 @@ void Input::counterPoll() {
         strncpy(addrstr,emit->valuestring,sizeof(addrstr));
         if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestring);
         sprintf(valstr, "%d", counterValue);
-        mqttClient.publish(addrstr, valstr);
+        if (mqttClient.connected() && !ethernetIdleCount)
+            mqttClient.publish(addrstr, valstr);
         setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT);
         debugSerial<<F(" NextPollMillis=")<<nextPollTime();
     }
@@ -285,7 +288,8 @@ void Input::uptimePoll() {
         char valstr[11];
 //        printUlongValueToStr(valstr,millis());
         printUlongValueToStr(valstr, millis());
-        mqttClient.publish(emit->valuestring, valstr);
+        if (mqttClient.connected() && !ethernetIdleCount)
+           mqttClient.publish(emit->valuestring, valstr);
     }
     setNextPollTime(millis() + UPTIME_POLL_DELAY_DEFAULT);
 }
@@ -384,10 +388,12 @@ void Input::dht22Poll() {
         if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestring);
         strcat(addrstr, "T");
         printFloatValueToStr(temp, valstr);
-        mqttClient.publish(addrstr, valstr);
+        if (mqttClient.connected()  && !ethernetIdleCount)
+            mqttClient.publish(addrstr, valstr);
         addrstr[strlen(addrstr) - 1] = 'H';
         printFloatValueToStr(humidity, valstr);
-        mqttClient.publish(addrstr, valstr);
+        if (mqttClient.connected()  && !ethernetIdleCount)
+            mqttClient.publish(addrstr, valstr);
 
         setNextPollTime(millis() + DHT_POLL_DELAY_DEFAULT);
         debugSerial << F(" NextPollMillis=") << nextPollTime() << endl;
@@ -440,48 +446,63 @@ void Input::contactPoll() {
 
 
 void Input::analogPoll() {
-    int16_t  mappedInputValue;
+    int16_t  mappedInputVal;
     aJsonObject *inputMap = aJson.getObjectItem(inputObj, "map");
-    short analogNoise = ANALOG_NOIZE;
+    short Noize = ANALOG_NOIZE;
     short simple = 0;
 
-    (inType & IN_ACTIVE_HIGH)?pinMode(pin, INPUT):pinMode(pin, INPUT_PULLUP);
-    int analogReadValue = analogRead(pin);
-    if (inputMap && inputMap->type == aJson_Array) {
-        int fromMax, fromMin, toMax, toMin;
-        if (aJson.getArraySize(inputMap) >= 4) {
-            fromMin = aJson.getArrayItem(inputMap, 0)->valueint;
-            fromMax = aJson.getArrayItem(inputMap, 1)->valueint;
-            toMin = aJson.getArrayItem(inputMap, 2)->valueint;
-            toMax = aJson.getArrayItem(inputMap, 3)->valueint;
-            mappedInputValue = map(analogReadValue, fromMin, fromMax, toMin, toMax);
-            if (aJson.getArraySize(inputMap) == 5)
-                analogNoise = aJson.getArrayItem(inputMap, 4)->valueint;
-            if (mappedInputValue > toMax)
-                mappedInputValue = toMax;
-        }else if (aJson.getArraySize(inputMap) == 2) {
-            simple = 1;
-            if (mappedInputValue < aJson.getArrayItem(inputMap, 0)->valueint) mappedInputValue = 0;
-            else if (mappedInputValue > aJson.getArrayItem(inputMap, 1)->valueint) mappedInputValue = 1;
-            else return;
-        }
+/*
+#if defined(ARDUINO_ARCH_STM32)
+     WiringPinMode inputPinMode;
+#endif
+
+
+#if defined(__SAM3X8E__)||defined(ARDUINO_ARCH_AVR)||defined(ARDUINO_ARCH_ESP8266)||defined(ARDUINO_ARCH_ESP32)
+#endif */
+    uint32_t inputPinMode;
+    if (inType & IN_ACTIVE_HIGH) {
+        inputPinMode = INPUT;
+    } else {
+        inputPinMode = INPUT_PULLUP;
     }
+    pinMode(pin, inputPinMode);
+    mappedInputVal = analogRead(pin);
+    // Mapping
+    if (inputMap && inputMap->type == aJson_Array)
+     {
+     int max;
+     if (aJson.getArraySize(inputMap)>=4)
+        mappedInputVal  = map (mappedInputVal,
+              aJson.getArrayItem(inputMap, 0)->valueint,
+              aJson.getArrayItem(inputMap, 1)->valueint,
+              aJson.getArrayItem(inputMap, 2)->valueint,
+              max=aJson.getArrayItem(inputMap, 3)->valueint);
+      if (aJson.getArraySize(inputMap)==5) Noize = aJson.getArrayItem(inputMap, 4)->valueint;
+      if (mappedInputVal>max) mappedInputVal=max;
+      if (aJson.getArraySize(inputMap)==2)
+        {
+          simple = 1;
+          if (mappedInputVal < aJson.getArrayItem(inputMap, 0)->valueint) mappedInputVal = 0;
+            else if (mappedInputVal > aJson.getArrayItem(inputMap, 1)->valueint) mappedInputVal = 1;
+                 else return;
+        }
+      }
     if (simple) {
-       if (analogReadValue != store->currentValue)
+       if (mappedInputVal != store->currentValue)
        {
-           onContactChanged(analogReadValue);
-           store->currentValue = analogReadValue;
+           onContactChanged(mappedInputVal);
+           store->currentValue = mappedInputVal;
        }}
     else
-    if (abs(mappedInputValue - store->currentValue)>analogNoise) // value changed >ANALOG_NOIZE
+    if (abs(mappedInputVal - store->currentValue)>Noize) // value changed >ANALOG_NOIZE
         store->bounce = 0;
      else // no change
         if (store->bounce<ANALOG_STATE_ATTEMPTS) store->bounce ++;
 
-        if (store->bounce<ANALOG_STATE_ATTEMPTS-1 && (mappedInputValue != store->currentValue))  //confirmed change
+        if (store->bounce<ANALOG_STATE_ATTEMPTS-1 && (mappedInputVal != store->currentValue))  //confirmed change
         {
-            onAnalogChanged(mappedInputValue);
-            store->currentValue = mappedInputValue;
+            onAnalogChanged(mappedInputVal);
+            store->currentValue = mappedInputVal;
         }
 
 }
@@ -497,16 +518,19 @@ void Input::onContactChanged(int newValue) {
     aJsonObject *emit = aJson.getObjectItem(inputObj, "emit");
     if (emit) {
 #ifdef WITH_DOMOTICZ
-        if (getIdxField()) {
-            if (newValue)
-                publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"On\"}",getIdxField());
-            else
-                publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",getIdxField());
-        } else
+        if (getIdxField())
+        {  (newValue) ? publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"On\"}",
+            : publishDataToDomoticz(0,emit,"{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",getIdxField());	                                               getIdxField())
+                       : publishDataToDomoticz(0, emit,
+                                               "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",
+                                               getIdxField());
+                          } else
 #endif
 {
 char addrstr[MQTT_TOPIC_LENGTH];
 strncpy(addrstr,emit->valuestring,sizeof(addrstr));
+if (mqttClient.connected() && !ethernetIdleCount)
+{
 if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestring);
         if (newValue) {  //send set command
             if (!scmd) mqttClient.publish(addrstr, "ON", true);
@@ -516,9 +540,11 @@ if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestri
             if (!rcmd) mqttClient.publish(addrstr, "OFF", true);
             else if (strlen(rcmd->valuestring))mqttClient.publish(addrstr, rcmd->valuestring, true);
         }
-    }
-
+}
+  }
+} // emit
     if (item) {
+      //debugSerial <<F("Controlled item:")<< item->valuestring <<endl;
         Item it(item->valuestring);
         if (it.isValid()) {
             if (newValue) {  //send set command
@@ -533,7 +559,6 @@ if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestri
         }
     }
 }
-}
 
 void Input::onAnalogChanged(int newValue) {
     debugSerial << F("IN:") << (pin) << F("=") << newValue << endl;
@@ -543,12 +568,19 @@ void Input::onAnalogChanged(int newValue) {
 
     if (emit) {
 
+//#ifdef WITH_DOMOTICZ
+//        if (getIdxField()) {
+//            (newValue)? publishDataToDomoticz(0, emit, "{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"On\"}", getIdxField())
+//            : publishDataToDomoticz(0,emit,"{\"command\":\"switchlight\",\"idx\":%s,\"switchcmd\":\"Off\"}",getIdxField());
+//        } else
+//#endif
               char addrstr[MQTT_TOPIC_LENGTH];
               strncpy(addrstr,emit->valuestring,sizeof(addrstr));
               if (!strchr(addrstr,'/')) setTopic(addrstr,sizeof(addrstr),T_OUT,emit->valuestring);
               char strVal[16];
               itoa(newValue,strVal,10);
-              mqttClient.publish(addrstr, strVal, true);
+              if (mqttClient.connected() && !ethernetIdleCount)
+                  mqttClient.publish(addrstr, strVal, true);
 }
 
     if (item) {
@@ -570,7 +602,8 @@ bool Input::publishDataToDomoticz(int pollTimeIncrement, aJsonObject *emit, cons
     vsnprintf(valstr, sizeof(valstr) - 1, format, args);
     va_end(args);
     debugSerial << valstr;
-    mqttClient.publish(emit->valuestring, valstr);
+    if (mqttClient.connected() && !ethernetIdleCount)
+        mqttClient.publish(emit->valuestring, valstr);
     if (pollTimeIncrement)
         setNextPollTime(millis() + pollTimeIncrement);
     debugSerial << F(" NextPollMillis=") << nextPollTime() << endl;
