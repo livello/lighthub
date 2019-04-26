@@ -78,7 +78,7 @@ int owUpdate() {
         }//if
     } //while
 
-    debugSerial<<F("1-wire count: ")<<t_count;
+    debugSerial<<F("1-wire count: ")<<t_count<<endl;
 #endif
 }
 
