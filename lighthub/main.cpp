@@ -381,6 +381,7 @@ if (WiFi.status() != WL_CONNECTED)
 
 }
 
+//void publishTopicMqtt()
 
 void onMQTTConnect(){
   char topic[64] = "";

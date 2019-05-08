@@ -72,21 +72,9 @@
 #endif
 
 #ifndef HOMETOPIC
-#define HOMETOPIC  "myhome"
-#endif
-/*
-#ifndef OUTTOPIC
-#define OUTTOPIC "/myhome/s_out/"
+#define HOMETOPIC  "/myhome"
 #endif
 
-#ifndef CMDTOPIC
-#define CMDTOPIC "/myhome/in/command/"
-#endif
-
-#ifndef INTOPIC
-#define INTOPIC  "/myhome/in/"
-#endif
-*/
 
 //Default output topic
 #ifndef OUTTOPIC

@@ -370,46 +370,45 @@ void printIPAddress(IPAddress ipAddress) {
 }
 
 
-char* setTopic(char* buf, int8_t buflen, topicType tt, char* suffix)
-{
-  aJsonObject *_root = NULL;
-  aJsonObject *_l2 = NULL;
+char *setTopic(char *buf, int8_t buflen, topicType tt, char *suffix) {
+    aJsonObject *_root = NULL;
+    aJsonObject *_l2 = NULL;
 
-if (topics && topics->type == aJson_Object)
-  {
-    _root = aJson.getObjectItem(topics, "root");
-    switch (tt) {
-      case T_OUT:
-      _l2 = aJson.getObjectItem(topics, "out");
-      break;
-      case T_BCST:
-      _l2 = aJson.getObjectItem(topics, "bcst");
-      break;
-    }
+    if (topics && topics->type == aJson_Object) {
+        _root = aJson.getObjectItem(topics, "root");
+        switch (tt) {
+            case T_OUT:
+                _l2 = aJson.getObjectItem(topics, "out");
+                break;
+            case T_BCST:
+                _l2 = aJson.getObjectItem(topics, "bcst");
+                break;
+        }
 
 
     }
-if  (_root) strncpy(buf,_root->valuestring,buflen);
-  else strncpy_P(buf,homeTopic,buflen);
-strncat(buf,"/",buflen);
+    if (_root) strncpy(buf, _root->valuestring, buflen);
+    else
+        strncpy_P(buf, homeTopic, buflen);
+    strncat(buf, "/", buflen);
 
-if (_l2) strncat(buf,_l2->valuestring,buflen);
-  else
-  switch (tt) {
-    case T_DEV:
-    strncat(buf,deviceName,buflen);
-    break;
-    case T_OUT:
-    strncat_P(buf,outTopic,buflen);
-    break;
-    case T_BCST:
-    strncat_P(buf,inTopic,buflen); /////
-    break;
-  }
-strncat(buf,"/",buflen);
-if (suffix) strncat(buf,suffix,buflen);
+    if (_l2) strncat(buf, _l2->valuestring, buflen);
+    else
+        switch (tt) {
+            case T_DEV:
+                strncat(buf, deviceName, buflen);
+                break;
+            case T_OUT:
+                strncat_P(buf, outTopic, buflen);
+                break;
+            case T_BCST:
+                strncat_P(buf, inTopic, buflen); /////
+                break;
+        }
+    strncat(buf, "/", buflen);
+    if (suffix) strncat(buf, suffix, buflen);
 
-return buf;
+    return buf;
 
 }
 
